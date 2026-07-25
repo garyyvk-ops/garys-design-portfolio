@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "Instructional Design Portfolio",
+  "entry": "instructional-design-portfolio.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "primary": true,
+  "createdAt": "2026-06-12T11:17:54.550Z",
+  "updatedAt": "2026-06-12T11:17:56.728Z",
+  "metadata": {
+    "identifier": "instructional-design-portfolio",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}

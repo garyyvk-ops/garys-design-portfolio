@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instructional Design Portfolio</title>
+  <style>
+    :root {
+      --bg: oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg: oklch(22% 0.015 250);
+      --muted: oklch(49% 0.015 250);
+      --border: oklch(91% 0.006 250);
+      --accent: oklch(61% 0.07 229);
+      --accent-strong: oklch(50% 0.095 229);
+      --ink: oklch(17% 0.012 250);
+      --dark: oklch(24% 0.024 250);
+      --dark-muted: oklch(77% 0.012 245);
+      --soft: oklch(96% 0.006 240);
+      --success: oklch(59% 0.11 155);
+      --warn: oklch(70% 0.13 78);
+      --danger: oklch(58% 0.16 25);
+      --font-display: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-body: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+      --content: min(1160px, calc(100vw - 40px));
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    body.modal-open { overflow: hidden; }
+    a { color: inherit; text-decoration: none; }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    img { max-width: 100%; display: block; }
+
+    .site-nav {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: color-mix(in oklch, var(--surface) 92%, transparent);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+    .nav-inner {
+      width: var(--content);
+      min-height: 74px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: 0;
+      font-size: 1.15rem;
+      text-transform: lowercase;
+    }
+    .brand-mark {
+      width: 11px;
+      height: 11px;
+      background: var(--accent);
+      display: inline-block;
+      transform: rotate(45deg);
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: .9rem;
+      color: var(--muted);
+    }
+    .nav-links a:hover { color: var(--fg); }
+    .nav-action, .btn-primary, .btn-secondary {
+      border: 1px solid var(--fg);
+      background: var(--fg);
+      color: white;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .nav-action:hover, .btn-primary:hover { transform: translateY(-1px); background: var(--accent-strong); border-color: var(--accent-strong); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--fg); transform: translateY(-1px); }
+
+    .hero {
+      width: var(--content);
+      margin: 0 auto;
+      padding: clamp(52px, 9vw, 112px) 0 clamp(36px, 6vw, 78px);
+      display: grid;
+      gap: 42px;
+    }
+    .hero-title {
+      text-align: center;
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--font-display);
+      font-size: clamp(64px, 14vw, 190px);
+      line-height: .86;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+    .hero-title span {
+      color: transparent;
+      -webkit-text-stroke: 2px var(--accent);
+      text-stroke: 2px var(--accent);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, .75fr);
+      gap: clamp(28px, 5vw, 64px);
+      align-items: end;
+    }
+    .intro h1 {
+      font-size: clamp(32px, 5vw, 64px);
+      line-height: 1.02;
+      margin: 0 0 18px;
+      max-width: 12ch;
+      color: var(--fg);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .intro p {
+      margin: 0;
+      max-width: 62ch;
+      color: var(--muted);
+      font-size: clamp(17px, 2vw, 21px);
+    }
+    .author-card {
+      border-left: 4px solid var(--accent);
+      padding-left: 22px;
+      display: grid;
+      gap: 16px;
+    }
+    .portrait {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 42% 32%, oklch(86% .03 230) 0 18%, transparent 19%),
+        linear-gradient(135deg, oklch(72% .055 226), oklch(42% .045 250));
+      position: relative;
+      overflow: hidden;
+    }
+    .portrait::after {
+      content: "";
+      position: absolute;
+      left: 19px;
+      right: 19px;
+      bottom: 0;
+      height: 38px;
+      border-radius: 24px 24px 0 0;
+      background: var(--fg);
+    }
+    .author-card h2 { margin: 0; font-size: 1.15rem; }
+    .author-card p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+    .toolbar-wrap {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .toolbar {
+      width: var(--content);
+      margin: 0 auto;
+      padding: 18px 0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: center;
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 16px;
+      min-height: 46px;
+      background: var(--bg);
+    }
+    .search input {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--fg);
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .filter {
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 999px;
+      color: var(--muted);
+    }
+    .filter[aria-pressed="true"] {
+      color: white;
+      background: var(--fg);
+      border-color: var(--fg);
+    }
+
+    .featured {
+      width: var(--content);
+      margin: 42px auto 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr);
+      min-height: 520px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .visual {
+      min-height: 320px;
+      background:
+        linear-gradient(135deg, color-mix(in oklch, var(--accent) 70%, white), oklch(30% .04 250)),
+        var(--soft);
+      position: relative;
+      overflow: hidden;
+    }
+    .visual::before {
+      content: "";
+      position: absolute;
+      inset: 11%;
+      border: 1px solid rgba(255,255,255,.65);
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.82) 0 34%, transparent 34% 40%, rgba(255,255,255,.68) 40% 100%);
+      transform: rotate(-4deg);
+      box-shadow: 0 28px 60px rgba(0,0,0,.2);
+    }
+    .visual::after {
+      content: "learning path";
+      position: absolute;
+      left: 14%;
+      bottom: 16%;
+      padding: 9px 12px;
+      background: var(--fg);
+      color: white;
+      border-radius: 999px;
+      font: 700 12px/1 var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .featured-copy {
+      padding: clamp(28px, 5vw, 58px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 22px;
+    }
+    .eyebrow {
+      color: var(--accent-strong);
+      font: 700 .74rem/1 var(--font-mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .featured h2 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 68px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      max-width: 10ch;
+    }
+    .featured p { margin: 0; color: var(--muted); font-size: 1.03rem; }
+
+    .posts {
+      margin-top: 54px;
+      border-top: 1px solid var(--border);
+    }
+    .post-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      min-height: 430px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .post-row.is-dark {
+      background: var(--dark);
+      color: white;
+    }
+    .post-row.is-dark .post-meta,
+    .post-row.is-dark .post-excerpt,
+    .post-row.is-dark .author-line { color: var(--dark-muted); }
+    .post-row.is-dark .open-post { color: white; border-color: rgba(255,255,255,.28); }
+    .post-row:nth-child(even) .post-media { order: 2; }
+    .post-media {
+      min-height: 430px;
+      background: var(--soft);
+      position: relative;
+      overflow: hidden;
+    }
+    .post-media[data-kind="Article"] {
+      background:
+        linear-gradient(90deg, transparent 0 18%, rgba(255,255,255,.75) 18% 20%, transparent 20%),
+        linear-gradient(135deg, oklch(93% .012 245), oklch(77% .03 226));
+    }
+    .post-media[data-kind="Pictures"] {
+      background:
+        radial-gradient(circle at 70% 28%, oklch(82% .06 185) 0 16%, transparent 17%),
+        linear-gradient(135deg, oklch(88% .02 228), oklch(64% .07 230));
+    }
+    .post-media[data-kind="Video"] {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.86) 0 8%, transparent 9%),
+        conic-gradient(from 130deg at 50% 50%, oklch(72% .08 230), oklch(32% .035 248), oklch(72% .08 230));
+    }
+    .post-media[data-kind="Mixed"] {
+      background:
+        linear-gradient(45deg, rgba(255,255,255,.7) 0 12%, transparent 12% 24%, rgba(255,255,255,.45) 24% 36%, transparent 36%),
+        linear-gradient(135deg, oklch(84% .035 205), oklch(44% .05 250));
+    }
+    .media-badge {
+      position: absolute;
+      top: 28px;
+      left: 28px;
+      background: rgba(255,255,255,.88);
+      color: var(--fg);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font: 700 .74rem/1 var(--font-mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .post-content {
+      padding: clamp(28px, 5vw, 64px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    }
+    .post-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .post-title {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 52px);
+      line-height: 1.06;
+      max-width: 14ch;
+    }
+    .post-excerpt {
+      margin: 0;
+      color: var(--muted);
+      max-width: 58ch;
+    }
+    .author-line {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .mini-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), oklch(35% .04 250));
+    }
+    .open-post {
+      align-self: flex-start;
+      min-height: 42px;
+      padding: 0 15px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--fg);
+    }
+
+    .creator {
+      width: var(--content);
+      margin: clamp(50px, 8vw, 88px) auto;
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(320px, 1fr);
+      gap: 34px;
+      align-items: start;
+    }
+    .creator h2, .contact h2 {
+      margin: 0 0 14px;
+      font-size: clamp(30px, 5vw, 56px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .creator p, .contact p { color: var(--muted); margin: 0; }
+    .composer {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: clamp(22px, 4vw, 34px);
+      display: grid;
+      gap: 16px;
+    }
+    .field { display: grid; gap: 7px; }
+    .field label {
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      border-radius: var(--radius);
+      padding: 12px 13px;
+      min-height: 44px;
+      outline: 0;
+    }
+    .field textarea { min-height: 112px; resize: vertical; }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 18%, transparent);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .message {
+      min-height: 20px;
+      color: var(--success);
+      font-size: .9rem;
+    }
+
+    .contact {
+      background: var(--dark);
+      color: white;
+      padding: clamp(52px, 8vw, 92px) 0;
+    }
+    .contact-inner {
+      width: var(--content);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, .65fr);
+      gap: 40px;
+      align-items: center;
+    }
+    .contact p { color: var(--dark-muted); max-width: 62ch; }
+    .contact-links {
+      display: grid;
+      gap: 12px;
+    }
+    .contact-links a {
+      border-bottom: 1px solid rgba(255,255,255,.18);
+      padding: 12px 0;
+      color: white;
+    }
+
+    .dialog {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 11, 16, .62);
+      display: none;
+      place-items: center;
+      z-index: 60;
+      padding: 22px;
+    }
+    .dialog.is-open { display: grid; }
+    .dialog-panel {
+      width: min(720px, 100%);
+      max-height: min(780px, 90vh);
+      overflow: auto;
+      background: var(--surface);
+      color: var(--fg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 80px rgba(0,0,0,.28);
+    }
+    .dialog-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px 26px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dialog-head h3 { margin: 0; font-size: 1.5rem; }
+    .close {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: transparent;
+      font-size: 1.3rem;
+    }
+    .dialog-body { padding: 24px 26px 30px; }
+    .dialog-body p { color: var(--muted); }
+    .embed-box {
+      aspect-ratio: 16/9;
+      background:
+        radial-gradient(circle at center, white 0 9%, transparent 10%),
+        linear-gradient(135deg, var(--accent), var(--dark));
+      display: grid;
+      place-items: end start;
+      padding: 22px;
+      color: white;
+      margin: 20px 0;
+    }
+
+    .empty {
+      padding: 48px 20px;
+      text-align: center;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    @media (max-width: 860px) {
+      .nav-inner { min-height: auto; padding: 16px 0; align-items: flex-start; }
+      .nav-links { display: none; }
+      .hero-grid, .featured, .creator, .contact-inner { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr; }
+      .filters { justify-content: flex-start; }
+      .post-row { grid-template-columns: 1fr; }
+      .post-row:nth-child(even) .post-media { order: 0; }
+      .post-media { min-height: 270px; }
+      .featured h2, .post-title { max-width: none; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      :root { --content: min(100vw - 24px, 1160px); }
+      .hero-title { font-size: clamp(58px, 22vw, 94px); }
+      .hero-title span { -webkit-text-stroke-width: 1px; text-stroke-width: 1px; }
+      .nav-action { padding: 0 13px; }
+      .featured-copy, .post-content { padding: 24px; }
+      .creator { margin: 42px auto; }
+      .filter { flex: 1 1 auto; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="nav-inner">
+      <a href="#home" class="brand" aria-label="Portfolio home"><span class="brand-mark"></span> learning journal</a>
+      <div class="nav-links">
+        <a href="#posts">Posts</a>
+        <a href="#create">Create</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <button class="nav-action" type="button" data-jump-create>New post</button>
+    </div>
+  </nav>
+
+  <main id="home">
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 class="hero-title" id="hero-title">Port<span>folio</span></h1>
+      <div class="hero-grid">
+        <div class="intro">
+          <h1>Instructional design work, written and shown.</h1>
+          <p>A simple publishing home for learning articles, process images, demo videos, and complete case-study posts. Built so each new piece can stand alone as evidence of design thinking, content craft, and learner-centered execution.</p>
+        </div>
+        <aside class="author-card" aria-label="Author profile">
+          <div class="portrait" aria-hidden="true"></div>
+          <div>
+            <h2>Instructional Designer</h2>
+            <p>Use this space for your name, specialty, and a two-line statement about the learning problems you solve.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="toolbar-wrap" aria-label="Post filters">
+      <div class="toolbar">
+        <label class="search" aria-label="Search posts">
+          <span aria-hidden="true">Search</span>
+          <input id="searchInput" type="search" placeholder="Find by topic, format, or audience" autocomplete="off" />
+        </label>
+        <div class="filters" id="filters" aria-label="Filter by format">
+          <button class="filter" type="button" data-filter="All" aria-pressed="true">All</button>
+          <button class="filter" type="button" data-filter="Article" aria-pressed="false">Articles</button>
+          <button class="filter" type="button" data-filter="Pictures" aria-pressed="false">Pictures</button>
+          <button class="filter" type="button" data-filter="Video" aria-pressed="false">Videos</button>
+          <button class="filter" type="button" data-filter="Mixed" aria-pressed="false">Mixed</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="featured" aria-labelledby="featured-title">
+      <div class="visual" aria-hidden="true"></div>
+      <div class="featured-copy">
+        <div class="eyebrow">Featured case study</div>
+        <h2 id="featured-title">From course notes to learner pathway.</h2>
+        <p>Lead with a strong piece that combines article writing, screenshots, and a short walkthrough video. The layout keeps the Moose-style split composition while making the content clearly instructional-design focused.</p>
+        <button class="btn-secondary" type="button" data-open-featured>Read featured post</button>
+      </div>
+    </section>
+
+    <section class="posts" id="posts" aria-live="polite"></section>
+
+    <section class="creator" id="create" aria-labelledby="create-title">
+      <div>
+        <div class="eyebrow">Content studio</div>
+        <h2 id="create-title">Create the next portfolio post.</h2>
+        <p>Add a written article, image-based process note, video walkthrough, or a mixed-media case study. Keep each entry focused on the learning problem, the design decision, and the evidence you want reviewers to see.</p>
+      </div>
+      <form class="composer" id="postForm">
+        <div class="field">
+          <label for="postTitle">Title</label>
+          <input id="postTitle" name="title" placeholder="e.g. Building a scenario-based onboarding module" required />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="postKind">Format</label>
+            <select id="postKind" name="kind">
+              <option>Article</option>
+              <option>Pictures</option>
+              <option>Video</option>
+              <option>Mixed</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="postAudience">Audience</label>
+            <input id="postAudience" name="audience" placeholder="New hires, sales team, students" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="postSummary">Summary</label>
+          <textarea id="postSummary" name="summary" placeholder="Describe the learning problem, your design approach, and what the viewer should notice." required></textarea>
+        </div>
+        <div class="field">
+          <label for="postMedia">Media link or note</label>
+          <input id="postMedia" name="media" placeholder="Paste a video URL, image folder note, or leave blank" />
+        </div>
+        <div class="message" id="formMessage" role="status"></div>
+        <button class="btn-primary" type="submit">Publish post</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="contact" id="contact">
+    <div class="contact-inner">
+      <div>
+        <div class="eyebrow">Contact</div>
+        <h2>Invite the work into a conversation.</h2>
+        <p>Use this footer for your email, resume, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.</p>
+      </div>
+      <div class="contact-links">
+        <a href="mailto:hello@example.com">hello@example.com</a>
+        <a href="#">LinkedIn profile</a>
+        <a href="#">Download resume</a>
+      </div>
+    </div>
+  </footer>
+
+  <div class="dialog" id="postDialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <article class="dialog-panel">
+      <div class="dialog-head">
+        <h3 id="dialogTitle">Post title</h3>
+        <button class="close" type="button" aria-label="Close dialog" data-close-dialog>&times;</button>
+      </div>
+      <div class="dialog-body" id="dialogBody"></div>
+    </article>
+  </div>
+
+  <script>
+    const seedPosts = [
+      {
+        title: 'Designing a microlearning series for busy managers',
+        kind: 'Article',
+        audience: 'Team leads',
+        date: 'Draft post',
+        summary: 'A written breakdown of how short lessons, spaced prompts, and manager reflection questions can turn a policy topic into a practical coaching routine.',
+        media: 'Article outline and lesson structure'
+      },
+      {
+        title: 'Storyboard frames for a customer-service simulation',
+        kind: 'Pictures',
+        audience: 'Frontline support',
+        date: 'Draft post',
+        summary: 'A visual process post showing scenario beats, feedback moments, and interface states for a branching practice activity.',
+        media: 'Storyboard screenshots'
+      },
+      {
+        title: 'Video walkthrough: from learning objective to prototype',
+        kind: 'Video',
+        audience: 'Portfolio reviewers',
+        date: 'Draft post',
+        summary: 'A short narrated walkthrough slot for explaining the decisions behind an instructional prototype without making the viewer read the whole case study first.',
+        media: 'Video embed placeholder'
+      },
+      {
+        title: 'Complete case study: blended onboarding path',
+        kind: 'Mixed',
+        audience: 'Hiring managers',
+        date: 'Draft post',
+        summary: 'A combined article, image gallery, and video reflection that documents the problem, design constraints, sample deliverables, and what changed after review.',
+        media: 'Article + images + video'
+      }
+    ];
+
+    const storageKey = 'instructional-portfolio-posts';
+    const postsEl = document.getElementById('posts');
+    const searchInput = document.getElementById('searchInput');
+    const filtersEl = document.getElementById('filters');
+    const dialog = document.getElementById('postDialog');
+    const dialogTitle = document.getElementById('dialogTitle');
+    const dialogBody = document.getElementById('dialogBody');
+    const form = document.getElementById('postForm');
+    const formMessage = document.getElementById('formMessage');
+    let activeFilter = 'All';
+
+    function loadPosts() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        return Array.isArray(saved) && saved.length ? saved : seedPosts;
+      } catch (_) {
+        return seedPosts;
+      }
+    }
+
+    function savePosts(posts) {
+      localStorage.setItem(storageKey, JSON.stringify(posts));
+    }
+
+    let posts = loadPosts();
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+
+    function matches(post) {
+      const query = searchInput.value.trim().toLowerCase();
+      const haystack = [post.title, post.kind, post.audience, post.summary, post.media].join(' ').toLowerCase();
+      const kindMatch = activeFilter === 'All' || post.kind === activeFilter;
+      return kindMatch && (!query || haystack.includes(query));
+    }
+
+    function renderPosts() {
+      const visible = posts.filter(matches);
+      postsEl.innerHTML = visible.length ? visible.map((post, index) => `
+        <article class="post-row ${index % 2 ? 'is-dark' : ''}" data-kind="${escapeHtml(post.kind)}">
+          <div class="post-media" data-kind="${escapeHtml(post.kind)}">
+            <span class="media-badge">${escapeHtml(post.kind)}</span>
+          </div>
+          <div class="post-content">
+            <div class="post-meta">
+              <span>${escapeHtml(post.date || 'Draft post')}</span>
+              <span>${escapeHtml(post.audience || 'Audience to define')}</span>
+              <span>${escapeHtml(post.media || 'Media note open')}</span>
+            </div>
+            <h2 class="post-title">${escapeHtml(post.title)}</h2>
+            <p class="post-excerpt">${escapeHtml(post.summary)}</p>
+            <div class="author-line"><span class="mini-avatar" aria-hidden="true"></span><span>Instructional design portfolio entry</span></div>
+            <button class="open-post" type="button" data-post-index="${posts.indexOf(post)}">Open post</button>
+          </div>
+        </article>
+      `).join('') : '<div class="empty">No posts match this filter yet.</div>';
+    }
+
+    function openPost(post) {
+      dialogTitle.textContent = post.title;
+      dialogBody.innerHTML = `
+        <div class="eyebrow">${escapeHtml(post.kind)} / ${escapeHtml(post.audience || 'Audience to define')}</div>
+        <div class="embed-box"><strong>${escapeHtml(post.media || 'Media placeholder')}</strong></div>
+        <p>${escapeHtml(post.summary)}</p>
+        <p><strong>Portfolio note:</strong> Use this body for the full article, image gallery, embedded video, or combined case-study narrative behind the work.</p>
+      `;
+      dialog.classList.add('is-open');
+      document.body.classList.add('modal-open');
+    }
+
+    filtersEl.addEventListener('click', event => {
+      const button = event.target.closest('[data-filter]');
+      if (!button) return;
+      activeFilter = button.dataset.filter;
+      filtersEl.querySelectorAll('.filter').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      renderPosts();
+    });
+
+    searchInput.addEventListener('input', renderPosts);
+
+    postsEl.addEventListener('click', event => {
+      const button = event.target.closest('[data-post-index]');
+      if (!button) return;
+      openPost(posts[Number(button.dataset.postIndex)]);
+    });
+
+    document.querySelector('[data-open-featured]').addEventListener('click', () => {
+      openPost({
+        title: 'From course notes to learner pathway',
+        kind: 'Mixed',
+        audience: 'Portfolio reviewers',
+        summary: 'A featured case-study slot for combining the article, screenshots, and a brief walkthrough video behind a complete instructional design project.',
+        media: 'Featured article + gallery + video'
+      });
+    });
+
+    document.querySelectorAll('[data-close-dialog]').forEach(button => {
+      button.addEventListener('click', () => {
+        dialog.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+      });
+    });
+
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) {
+        dialog.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && dialog.classList.contains('is-open')) {
+        dialog.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+      }
+    });
+
+    function jumpToSection(id) {
+      const target = document.getElementById(id);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.pageYOffset - 78;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+
+    document.querySelector('[data-jump-create]').addEventListener('click', () => {
+      jumpToSection('create');
+      window.setTimeout(() => document.getElementById('postTitle').focus({ preventScroll: true }), 320);
+    });
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const post = {
+        title: formData.get('title').trim(),
+        kind: formData.get('kind'),
+        audience: formData.get('audience').trim(),
+        summary: formData.get('summary').trim(),
+        media: formData.get('media').trim(),
+        date: 'New post'
+      };
+      if (!post.title || !post.summary) {
+        formMessage.style.color = 'var(--danger)';
+        formMessage.textContent = 'Add a title and summary before publishing.';
+        return;
+      }
+      posts = [post, ...posts];
+      savePosts(posts);
+      form.reset();
+      formMessage.style.color = 'var(--success)';
+      formMessage.textContent = 'Published to the top of your portfolio feed.';
+      activeFilter = 'All';
+      filtersEl.querySelectorAll('.filter').forEach(item => item.setAttribute('aria-pressed', String(item.dataset.filter === 'All')));
+      renderPosts();
+      jumpToSection('posts');
+    });
+
+    renderPosts();
+  </script>
+</body>
+</html>
