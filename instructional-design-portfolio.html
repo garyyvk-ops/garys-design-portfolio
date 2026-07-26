@@ -956,7 +956,7 @@
     <form class="auth-card" id="authForm">
       <div class="eyebrow" id="authEyebrow">Host access</div>
       <h1 id="authTitle">Unlock the host studio</h1>
-      <p id="authCopy">Set or enter the host passcode. This protects the editor surface in this static prototype, but it is not a real server-side permission system yet.</p>
+      <p id="authCopy">Enter the host passcode to open the studio. This is now checked by the live backend before any editing tools are shown.</p>
       <div class="field">
         <label for="authPasscode" id="authLabel">Passcode</label>
         <input id="authPasscode" type="password" autocomplete="current-password" required />
@@ -996,7 +996,7 @@
 
     <section class="host-banner studio-only" aria-label="Host-only editing note">
       <strong>Host studio</strong>
-      <p>This page is the editing surface. The public-facing version should be `index.html`, while `studio.html` stays for you as the host. In this static build, all changes save in this browser only.</p>
+      <p>This page is the editing surface. The public-facing version is `index.html`, while `studio.html` stays for you as the host. Changes here are intended to save to the live CMS and update the public portfolio feed.</p>
     </section>
 
     <main id="home">
@@ -1211,7 +1211,7 @@
           <div class="field">
             <label for="postFiles">Attach images or videos</label>
             <input id="postFiles" name="files" type="file" accept="image/*,video/*" multiple />
-            <small>Add screenshots, photos, or short clips directly to the post. This static prototype stores them in this browser, so compressed files work best.</small>
+            <small>Add screenshots, photos, or short clips directly to the post. Uploaded assets are stored by the CMS and rendered in the public portfolio feed.</small>
             <div class="attachment-preview is-empty" id="attachmentPreview">No files selected yet.</div>
           </div>
           <label class="toggle" id="removeAttachmentsWrap" hidden>
@@ -1253,7 +1253,8 @@
     </div>
   </div>
 
-  <script>
+  <script src="assets/portfolio-app.js"></script>
+<!--
     (function () {
       const mode = /studio\.html$/i.test(location.pathname) ? 'studio' : 'viewer';
       document.body.dataset.mode = mode;
@@ -2238,6 +2239,6 @@
         });
       }
     })();
-  </script>
+-->
 </body>
 </html>
