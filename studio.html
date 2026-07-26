@@ -25,8 +25,7 @@
       --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
       --content: min(1160px, calc(100vw - 40px));
       --radius: 8px;
-      --site-bg-image:
-        url("https://images.unsplash.com/photo-1516321310764-8d15b2b91f9b?auto=format&fit=crop&w=1800&q=80");
+      --site-bg-image: url("/assets/portfolio/site-classroom-bg.jpg");
       --hero-cover-image:
         linear-gradient(135deg, rgba(20, 33, 61, 0.5), rgba(17, 24, 39, 0.18)),
         url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80");
@@ -38,18 +37,15 @@
     * { box-sizing: border-box; }
     html {
       scroll-behavior: smooth;
-      background:
-        linear-gradient(135deg, rgba(8, 16, 28, 0.28), rgba(8, 16, 28, 0.06) 42%, rgba(8, 16, 28, 0.24)),
-        var(--site-bg-image) center / cover fixed no-repeat;
       background-color: var(--bg);
     }
     body {
       margin: 0;
       min-height: 100vh;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.7)),
-        linear-gradient(120deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0));
-      background-attachment: fixed;
+        linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.78)),
+        linear-gradient(120deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02)),
+        var(--site-bg-image) center / cover fixed no-repeat;
       color: var(--fg);
       font-family: var(--font-body);
       -webkit-font-smoothing: antialiased;
@@ -89,7 +85,7 @@
       position: sticky;
       top: 0;
       z-index: 30;
-      background: rgba(255, 255, 255, 0.78);
+      background: rgba(255, 255, 255, 0.66);
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(16px);
     }
@@ -205,7 +201,7 @@
       width: var(--content);
       margin: 18px auto 0;
       border: 1px solid color-mix(in oklch, var(--accent) 24%, var(--border));
-      background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+      background: rgba(248, 251, 255, 0.82);
       padding: 14px 18px;
       display: grid;
       gap: 6px;

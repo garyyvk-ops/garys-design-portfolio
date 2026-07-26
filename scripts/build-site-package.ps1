@@ -22,6 +22,10 @@ function Get-ContentType([string]$path) {
     '.js' { 'application/javascript; charset=utf-8' }
     '.css' { 'text/css; charset=utf-8' }
     '.json' { 'application/json; charset=utf-8' }
+    '.jpg' { 'image/jpeg' }
+    '.jpeg' { 'image/jpeg' }
+    '.png' { 'image/png' }
+    '.webp' { 'image/webp' }
     default { 'text/plain; charset=utf-8' }
   }
 }
@@ -59,7 +63,8 @@ foreach ($entry in $htmlFiles) {
 }
 
 $assetFiles = @(
-  @{ Route = '/assets/portfolio-app.js'; Path = (Join-Path $root 'assets\portfolio-app.js') }
+  @{ Route = '/assets/portfolio-app.js'; Path = (Join-Path $root 'assets\portfolio-app.js') },
+  @{ Route = '/assets/portfolio/site-classroom-bg.jpg'; Path = (Join-Path $root 'assets\portfolio\site-classroom-bg.jpg') }
 )
 
 foreach ($entry in $assetFiles) {
