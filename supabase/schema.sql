@@ -62,11 +62,11 @@ values (
     'featuredCopy', 'Lead with a strong piece that combines article writing, screenshots, and a short walkthrough video.',
     'featuredMedia', 'Featured article + gallery + video',
     'contactHeading', 'Invite the work into a conversation.',
-    'contactCopy', 'Use this footer for your email, resume, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
+    'contactCopy', 'Use this footer for your email, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
     'contactEmail', 'hello@example.com',
     'linkedinLabel', 'LinkedIn profile URL',
     'linkedinUrl', '',
-    'resumeLabel', 'Resume PDF link',
+    'resumeLabel', '',
     'resumeUrl', ''
   )
 )

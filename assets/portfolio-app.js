@@ -20,11 +20,11 @@
     featuredMedia: 'Featured article + gallery + video',
     featuredImageSrc: '',
     contactHeading: 'Invite the work into a conversation.',
-    contactCopy: 'Use this footer for your email, resume, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
+    contactCopy: 'Use this footer for your email, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
     contactEmail: 'hello@example.com',
     linkedinLabel: 'LinkedIn profile URL',
     linkedinUrl: '',
-    resumeLabel: 'Resume PDF link',
+    resumeLabel: '',
     resumeUrl: ''
   };
 
@@ -349,16 +349,8 @@
       elements.linkedinLink.setAttribute('aria-disabled', 'true');
     }
 
-    if (state.site.resumeUrl) {
-      elements.resumeLink.textContent = state.site.resumeLabel || defaultSite.resumeLabel;
-      elements.resumeLink.href = state.site.resumeUrl;
-      elements.resumeLink.classList.remove('muted-link');
-      elements.resumeLink.removeAttribute('aria-disabled');
-    } else {
-      elements.resumeLink.textContent = state.site.resumeLabel || defaultSite.resumeLabel;
-      elements.resumeLink.href = '#';
-      elements.resumeLink.classList.add('muted-link');
-      elements.resumeLink.setAttribute('aria-disabled', 'true');
+    if (elements.resumeLink) {
+      elements.resumeLink.hidden = true;
     }
 
     document.documentElement.style.setProperty('--hero-cover-image', cssHeroCover(state.site.heroCoverSrc));
@@ -399,8 +391,6 @@
     elements.siteForm.contactEmail.value = state.site.contactEmail || defaultSite.contactEmail;
     elements.siteForm.linkedinLabel.value = state.site.linkedinLabel || defaultSite.linkedinLabel;
     elements.siteForm.linkedinUrl.value = state.site.linkedinUrl || '';
-    elements.siteForm.resumeLabel.value = state.site.resumeLabel || defaultSite.resumeLabel;
-    elements.siteForm.resumeUrl.value = state.site.resumeUrl || '';
     elements.siteForm.newPasscode.value = '';
     paintAssetPreview('heroCoverPreview', state.site.heroCoverSrc);
     paintAssetPreview('profileImagePreview', state.site.profileImageSrc);
@@ -589,7 +579,6 @@
       '<div class="eyebrow">' + escapeHtml(post.kind) + ' / ' + escapeHtml(post.audience || 'Audience to define') + '</div>',
       renderDialogMedia(post),
       '<p>' + escapeHtml(post.summary) + '</p>',
-      '<p><strong>Portfolio note:</strong> This modal previews the current saved post content from the live portfolio CMS.</p>',
       studioActions
     ].join('');
     elements.dialog.classList.add('is-open');

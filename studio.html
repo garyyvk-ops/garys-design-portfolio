@@ -1122,14 +1122,6 @@
               <input id="linkedinUrlInput" name="linkedinUrl" placeholder="https://..." />
             </div>
             <div class="field">
-              <label for="resumeLabelInput">Resume label</label>
-              <input id="resumeLabelInput" name="resumeLabel" />
-            </div>
-            <div class="field">
-              <label for="resumeUrlInput">Resume URL</label>
-              <input id="resumeUrlInput" name="resumeUrl" placeholder="https://..." />
-            </div>
-            <div class="field">
               <label for="newPasscodeInput">New studio passcode</label>
               <input id="newPasscodeInput" name="newPasscode" type="password" autocomplete="new-password" />
               <small>Leave this blank if you do not want to change the studio passcode.</small>
@@ -1232,12 +1224,11 @@
         <div>
           <div class="eyebrow">Contact</div>
           <h2 id="contactHeading">Invite the work into a conversation.</h2>
-          <p id="contactCopy">Use this footer for your email, resume, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.</p>
+          <p id="contactCopy">Use this footer for your email, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.</p>
         </div>
         <div class="contact-links">
           <a id="contactEmailLink" href="mailto:hello@example.com">hello@example.com</a>
           <a id="linkedinLink" class="muted-link" href="#" target="_blank" rel="noreferrer">LinkedIn profile URL</a>
-          <a id="resumeLink" class="muted-link" href="#" target="_blank" rel="noreferrer">Resume PDF link</a>
         </div>
       </div>
     </footer>
@@ -1288,7 +1279,7 @@
         contactEmail: 'hello@example.com',
         linkedinLabel: 'LinkedIn profile URL',
         linkedinUrl: '',
-        resumeLabel: 'Resume PDF link',
+  resumeLabel: '',
         resumeUrl: ''
       };
 

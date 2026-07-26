@@ -18,11 +18,11 @@ const defaultSite = {
   featuredMedia: 'Featured article + gallery + video',
   featuredImageSrc: '',
   contactHeading: 'Invite the work into a conversation.',
-  contactCopy: 'Use this footer for your email, resume, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
+  contactCopy: 'Use this footer for your email, LinkedIn, and a short note about the kinds of learning design projects you want to take on next.',
   contactEmail: 'hello@example.com',
   linkedinLabel: 'LinkedIn profile URL',
   linkedinUrl: '',
-  resumeLabel: 'Resume PDF link',
+  resumeLabel: '',
   resumeUrl: ''
 };
 
@@ -383,8 +383,8 @@ async function saveSite(env, request) {
     contactEmail: String(formData.get('contactEmail') || '').trim() || defaultSite.contactEmail,
     linkedinLabel: String(formData.get('linkedinLabel') || '').trim() || defaultSite.linkedinLabel,
     linkedinUrl: String(formData.get('linkedinUrl') || '').trim(),
-    resumeLabel: String(formData.get('resumeLabel') || '').trim() || defaultSite.resumeLabel,
-    resumeUrl: String(formData.get('resumeUrl') || '').trim()
+    resumeLabel: '',
+    resumeUrl: ''
   });
 
   payload.heroCoverSrc = await resolveSiteAsset(env, formData, 'heroCover', existing.site.heroCoverSrc);
