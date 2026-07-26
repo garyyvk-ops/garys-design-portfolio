@@ -425,6 +425,20 @@
     return post.media ? label + ' + note' : label;
   }
 
+  function renderParagraphs(text, className) {
+    const paragraphs = String(text || '')
+      .replace(/\r\n?/g, '\n')
+      .split(/\n\s*\n/)
+      .map(function (paragraph) { return paragraph.trim(); })
+      .filter(Boolean);
+    if (!paragraphs.length) {
+      return '<p class="' + className + '"></p>';
+    }
+    return paragraphs.map(function (paragraph) {
+      return '<p class="' + className + '">' + escapeHtml(paragraph).replace(/\n/g, '<br>') + '</p>';
+    }).join('');
+  }
+
   function renderMediaAsset(attachment, className) {
     if (!attachment) return '';
     if (attachment.kind === 'video') {
@@ -521,7 +535,7 @@
         '<div class="post-content">',
         '<div class="post-meta"><span>' + escapeHtml(post.date || 'Draft post') + '</span><span>' + escapeHtml(post.audience || 'Audience to define') + '</span><span>' + escapeHtml(getAttachmentSummary(post)) + '</span></div>',
         '<h2 class="post-title">' + escapeHtml(post.title) + '</h2>',
-        '<p class="post-excerpt">' + escapeHtml(post.summary) + '</p>',
+        renderParagraphs(post.summary, 'post-excerpt'),
         '<div class="author-line"><span class="mini-avatar"' + avatarStyle + ' aria-hidden="true"></span><span>' + escapeHtml(state.site.siteTitle) + ' entry</span></div>',
         '<button class="open-post" type="button" data-open-post="' + escapeAttribute(post.id) + '">Open post</button>',
         hostActions,
@@ -578,7 +592,7 @@
     elements.dialogBody.innerHTML = [
       '<div class="eyebrow">' + escapeHtml(post.kind) + ' / ' + escapeHtml(post.audience || 'Audience to define') + '</div>',
       renderDialogMedia(post),
-      '<p>' + escapeHtml(post.summary) + '</p>',
+      '<div class="dialog-copy">' + renderParagraphs(post.summary, 'dialog-paragraph') + '</div>',
       studioActions
     ].join('');
     elements.dialog.classList.add('is-open');
