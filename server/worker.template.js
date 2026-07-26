@@ -68,6 +68,9 @@ const seedPosts = [
     attachments: []
   }
 ];
+const seedPostIds = new Set(seedPosts.map(post => post.id));
+const seedPostTitles = new Set(seedPosts.map(post => post.title));
+const seedPostSummaries = new Set(seedPosts.map(post => post.summary));
 
 function decodeBase64(base64) {
   if (!htmlCache.has(base64)) {
@@ -113,6 +116,18 @@ function normalizePost(post) {
     media: post.media || '',
     attachments: normalizeAttachments(post.attachments)
   };
+}
+
+function isSeedPost(post) {
+  if (!post || typeof post !== 'object') return false;
+  const id = String(post.id || '').trim();
+  const title = String(post.title || '').trim();
+  const summary = String(post.summary || '').trim();
+  return seedPostIds.has(id) || (seedPostTitles.has(title) && seedPostSummaries.has(summary));
+}
+
+function stripSeedPosts(posts) {
+  return Array.isArray(posts) ? posts.filter(post => !isSeedPost(post)) : [];
 }
 
 function normalizeSupabaseUrl(value) {
@@ -297,7 +312,7 @@ async function fetchContent(env) {
       }))
     : [];
 
-  return { site, posts, configured: true };
+  return { site, posts: stripSeedPosts(posts), configured: true };
 }
 
 async function uploadFile(env, file, folder) {

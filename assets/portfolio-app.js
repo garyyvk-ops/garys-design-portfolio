@@ -70,6 +70,15 @@
       attachments: []
     }
   ];
+  const legacyStorageKeys = [
+    'gary-design-site-settings',
+    'gary-design-posts',
+    'gary-design-studio-passcode',
+    'gary-design-studio-auth'
+  ];
+  const seedPostIds = new Set(seedPosts.map(function (post) { return post.id; }));
+  const seedPostTitles = new Set(seedPosts.map(function (post) { return post.title; }));
+  const seedPostSummaries = new Set(seedPosts.map(function (post) { return post.summary; }));
 
   const state = {
     site: Object.assign({}, defaultSite),
@@ -112,6 +121,25 @@
       media: post.media || '',
       attachments: normalizeAttachments(post.attachments)
     };
+  }
+
+  function isSeedPost(post) {
+    if (!post || typeof post !== 'object') return false;
+    const id = String(post.id || '').trim();
+    const title = String(post.title || '').trim();
+    const summary = String(post.summary || '').trim();
+    return seedPostIds.has(id) || (seedPostTitles.has(title) && seedPostSummaries.has(summary));
+  }
+
+  function stripSeedPosts(posts) {
+    return Array.isArray(posts) ? posts.filter(function (post) { return !isSeedPost(post); }) : [];
+  }
+
+  function clearLegacyPrototypeStorage() {
+    legacyStorageKeys.forEach(function (key) {
+      try { localStorage.removeItem(key); } catch (_) {}
+      try { sessionStorage.removeItem(key); } catch (_) {}
+    });
   }
 
   function formatBytes(bytes) {
@@ -168,9 +196,7 @@
   async function apiGetContent() {
     const payload = await request('/api/content');
     state.site = Object.assign({}, defaultSite, payload.site || {});
-    state.posts = Array.isArray(payload.posts)
-      ? payload.posts.map(normalizePost)
-      : [];
+    state.posts = stripSeedPosts(payload.posts).map(normalizePost);
   }
 
   async function apiGetSession() {
@@ -648,6 +674,7 @@
   }
 
   async function bootstrap() {
+    clearLegacyPrototypeStorage();
     if (mode === 'studio') {
       await apiGetSession();
       if (!state.session.authenticated) {
