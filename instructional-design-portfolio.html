@@ -25,6 +25,8 @@
       --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
       --content: min(1160px, calc(100vw - 40px));
       --radius: 8px;
+      --site-bg-image:
+        url("https://images.unsplash.com/photo-1516321310764-8d15b2b91f9b?auto=format&fit=crop&w=1800&q=80");
       --hero-cover-image:
         linear-gradient(135deg, rgba(20, 33, 61, 0.5), rgba(17, 24, 39, 0.18)),
         url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80");
@@ -37,7 +39,14 @@
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      background: var(--bg);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.92)),
+        linear-gradient(120deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0)),
+        var(--site-bg-image);
+      background-color: var(--bg);
+      background-size: auto, auto, cover;
+      background-position: center, center, center;
+      background-attachment: scroll, scroll, fixed;
       color: var(--fg);
       font-family: var(--font-body);
       -webkit-font-smoothing: antialiased;
