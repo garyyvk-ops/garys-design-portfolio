@@ -295,7 +295,7 @@ async function fetchContent(env) {
         media: row.media_note,
         attachments: row.attachments || []
       }))
-    : seedPosts.map(normalizePost);
+    : [];
 
   return { site, posts, configured: true };
 }
