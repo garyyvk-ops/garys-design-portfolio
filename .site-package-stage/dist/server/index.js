@@ -115,9 +115,16 @@ function normalizePost(post) {
   };
 }
 
+function normalizeSupabaseUrl(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/rest\/v1$/i, '');
+}
+
 function getConfig(env) {
   return {
-    supabaseUrl: env.SUPABASE_URL || '',
+    supabaseUrl: normalizeSupabaseUrl(env.SUPABASE_URL),
     serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || '',
     bucket: env.SUPABASE_STORAGE_BUCKET || 'portfolio-assets',
     hostPassword: env.CMS_HOST_PASSWORD || '',
@@ -223,6 +230,18 @@ async function supabaseFetch(env, path, init = {}) {
   return response;
 }
 
+async function fileToDataUrl(file, body) {
+  const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  const mime = file.type || 'application/octet-stream';
+  return `data:${mime};base64,${btoa(binary)}`;
+}
+
 async function ensureBucket(env) {
   const config = getConfig(env);
   try {
@@ -287,27 +306,27 @@ async function uploadFile(env, file, folder) {
   const safeExt = extension && extension !== String(file.name || '') ? extension : (file.type.startsWith('video/') ? 'mp4' : 'jpg');
   const path = `${folder}/${crypto.randomUUID()}.${safeExt}`;
   const body = await file.arrayBuffer();
+  const upload = () => supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
+    method: 'POST',
+    headers: {
+      'content-type': file.type || 'application/octet-stream',
+      'x-upsert': 'true'
+    },
+    body
+  });
   try {
-    await supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
-      method: 'POST',
-      headers: {
-        'content-type': file.type || 'application/octet-stream',
-        'x-upsert': 'true'
-      },
-      body
-    });
+    await upload();
   } catch (error) {
     const missingBucket = error.status === 404 && String(error.body || '').includes('Bucket not found');
     if (!missingBucket) throw error;
-    await ensureBucket(env);
-    await supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
-      method: 'POST',
-      headers: {
-        'content-type': file.type || 'application/octet-stream',
-        'x-upsert': 'true'
-      },
-      body
-    });
+    try {
+      await ensureBucket(env);
+      await upload();
+    } catch (retryError) {
+      const stillMissingBucket = retryError.status === 404 && String(retryError.body || '').includes('Bucket not found');
+      if (!stillMissingBucket) throw retryError;
+      return fileToDataUrl(file, body);
+    }
   }
   return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${path}`;
 }
@@ -318,7 +337,8 @@ async function resolveSiteAsset(env, formData, fieldName, previousValue) {
   const url = String(formData.get(`${fieldName}Url`) || '').trim();
   const file = formData.get(`${fieldName}File`);
   if (file && typeof file === 'object' && file.size > 0) {
-    return uploadFile(env, file, `site/${fieldName}`);
+    const body = await file.arrayBuffer();
+    return fileToDataUrl(file, body);
   }
   if (url) return url;
   return previousValue || '';

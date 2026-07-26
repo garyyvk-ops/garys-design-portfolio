@@ -337,7 +337,8 @@ async function resolveSiteAsset(env, formData, fieldName, previousValue) {
   const url = String(formData.get(`${fieldName}Url`) || '').trim();
   const file = formData.get(`${fieldName}File`);
   if (file && typeof file === 'object' && file.size > 0) {
-    return uploadFile(env, file, `site/${fieldName}`);
+    const body = await file.arrayBuffer();
+    return fileToDataUrl(file, body);
   }
   if (url) return url;
   return previousValue || '';
