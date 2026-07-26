@@ -73,7 +73,7 @@
 
   const state = {
     site: Object.assign({}, defaultSite),
-    posts: seedPosts.slice(),
+    posts: [],
     activeFilter: 'All',
     latestPublishedPostId: null,
     lastFocusedElement: null,
@@ -168,9 +168,9 @@
   async function apiGetContent() {
     const payload = await request('/api/content');
     state.site = Object.assign({}, defaultSite, payload.site || {});
-    state.posts = Array.isArray(payload.posts) && payload.posts.length
+    state.posts = Array.isArray(payload.posts)
       ? payload.posts.map(normalizePost)
-      : seedPosts.map(normalizePost);
+      : [];
   }
 
   async function apiGetSession() {
@@ -671,7 +671,7 @@
       await apiGetContent();
     } catch (error) {
       state.site = Object.assign({}, defaultSite);
-      state.posts = seedPosts.map(normalizePost);
+      state.posts = [];
       if (mode === 'studio') {
         showAuthShell();
         elements.authMessage.style.color = 'var(--danger)';
