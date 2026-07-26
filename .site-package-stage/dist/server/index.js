@@ -215,9 +215,34 @@ async function supabaseFetch(env, path, init = {}) {
   const response = await fetch(`${config.supabaseUrl}${path}`, Object.assign({}, init, { headers }));
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(body || 'Supabase request failed.');
+    const error = new Error(body || 'Supabase request failed.');
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
   return response;
+}
+
+async function ensureBucket(env) {
+  const config = getConfig(env);
+  try {
+    await supabaseFetch(env, `/storage/v1/bucket/${encodeURIComponent(config.bucket)}`);
+    return;
+  } catch (error) {
+    if (error.status !== 404) throw error;
+  }
+
+  await supabaseFetch(env, '/storage/v1/bucket', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      id: config.bucket,
+      name: config.bucket,
+      public: true
+    })
+  });
 }
 
 async function fetchContent(env) {
@@ -261,14 +286,29 @@ async function uploadFile(env, file, folder) {
   const extension = String(file.name || 'asset').split('.').pop().toLowerCase();
   const safeExt = extension && extension !== String(file.name || '') ? extension : (file.type.startsWith('video/') ? 'mp4' : 'jpg');
   const path = `${folder}/${crypto.randomUUID()}.${safeExt}`;
-  await supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
-    method: 'POST',
-    headers: {
-      'content-type': file.type || 'application/octet-stream',
-      'x-upsert': 'true'
-    },
-    body: await file.arrayBuffer()
-  });
+  const body = await file.arrayBuffer();
+  try {
+    await supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': file.type || 'application/octet-stream',
+        'x-upsert': 'true'
+      },
+      body
+    });
+  } catch (error) {
+    const missingBucket = error.status === 404 && String(error.body || '').includes('Bucket not found');
+    if (!missingBucket) throw error;
+    await ensureBucket(env);
+    await supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': file.type || 'application/octet-stream',
+        'x-upsert': 'true'
+      },
+      body
+    });
+  }
   return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${path}`;
 }
 

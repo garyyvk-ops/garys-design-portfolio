@@ -20,6 +20,11 @@ create table if not exists public.posts (
   updated_at timestamptz not null default now()
 );
 
+grant usage on schema public to service_role;
+grant select, insert, update, delete on public.site_content to service_role;
+grant select, insert, update, delete on public.posts to service_role;
+grant execute on function public.touch_updated_at() to service_role;
+
 create index if not exists posts_position_idx on public.posts (position desc);
 
 create or replace function public.touch_updated_at()
