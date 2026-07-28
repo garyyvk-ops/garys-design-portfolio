@@ -32,12 +32,21 @@ function Get-ContentType([string]$path) {
 
 function Get-SanitizedHtml([string]$path) {
   $raw = [System.IO.File]::ReadAllText($path)
-  [System.Text.RegularExpressions.Regex]::Replace(
+  $clean = [System.Text.RegularExpressions.Regex]::Replace(
     $raw,
     '<!--\s*\(function \(\) \{[\s\S]*?\}\)\(\);\s*-->',
     '',
     [System.Text.RegularExpressions.RegexOptions]::Singleline
   )
+  $assetBytes = [System.IO.File]::ReadAllBytes((Join-Path $root 'assets\portfolio-app.js'))
+  $hasher = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $hashBytes = $hasher.ComputeHash($assetBytes)
+  } finally {
+    $hasher.Dispose()
+  }
+  $hash = ([System.BitConverter]::ToString($hashBytes)).Replace('-', '').ToLowerInvariant().Substring(0, 12)
+  $clean -replace 'assets/portfolio-app\.js(?:\?[^"]*)?', "assets/portfolio-app.js?v=$hash"
 }
 
 $routes = [ordered]@{}

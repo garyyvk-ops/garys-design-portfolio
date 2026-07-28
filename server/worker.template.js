@@ -648,7 +648,7 @@ function serveStatic(pathname) {
   return new Response(decodeBase64(route.body), {
     headers: {
       'content-type': route.contentType,
-      'cache-control': pathname.startsWith('/assets/') ? 'public, max-age=60' : 'no-store'
+      'cache-control': 'no-store'
     }
   });
 }
