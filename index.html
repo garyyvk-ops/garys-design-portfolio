@@ -781,6 +781,12 @@
       place-items: center;
       text-align: center;
     }
+    .summary-help {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
     .attachment-item {
       display: flex;
       justify-content: space-between;
@@ -810,6 +816,36 @@
     .attachment-preview .attachment-tag {
       background: color-mix(in oklch, var(--accent) 14%, white);
       color: var(--fg);
+    }
+    .post-summary-flow,
+    .dialog-copy {
+      display: grid;
+      gap: 16px;
+    }
+    .inline-media-card,
+    .dialog-inline-media {
+      margin: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .inline-media-card img,
+    .inline-media-card video,
+    .dialog-inline-media img,
+    .dialog-inline-media video,
+    .dialog-hero-asset {
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      object-fit: cover;
+      background: rgba(12, 20, 36, 0.08);
+    }
+    .inline-media-card figcaption,
+    .dialog-inline-media figcaption {
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .dialog-hero-media {
+      margin-bottom: 16px;
     }
 
     .empty {
@@ -1226,9 +1262,20 @@
             <input id="postMedia" name="media" placeholder="Optional URL, caption, or context for the attached media" />
           </div>
           <div class="field">
-            <label for="postFiles">Attach images or videos</label>
+            <label for="postCoverFile">Featured cover image or video</label>
+            <input id="postCoverFile" name="coverFile" type="file" accept="image/*,video/*" />
+            <small>This becomes the main cover shown on the post card and at the top of the full post view.</small>
+            <div class="attachment-preview is-empty" id="postCoverPreview">No featured cover selected yet.</div>
+          </div>
+          <div class="field">
+            <label for="postSummary">Inline visual aids inside the summary</label>
+            <small>Copy and paste images or videos directly into the summary field. They will be embedded where you paste them on the live post.</small>
+            <div class="attachment-preview is-empty" id="inlineMediaPreview">Paste images or videos into the summary field to embed them inline.</div>
+          </div>
+          <div class="field">
+            <label for="postFiles">Additional images or videos</label>
             <input id="postFiles" name="files" type="file" accept="image/*,video/*" multiple />
-            <small>Add screenshots, photos, or short clips directly to the post. Uploaded assets are stored by the CMS and rendered in the public portfolio feed.</small>
+            <small>Optional extra media. If not pasted inline, these appear after the written content in the full post view.</small>
             <div class="attachment-preview is-empty" id="attachmentPreview">No files selected yet.</div>
           </div>
           <label class="toggle" id="removeAttachmentsWrap" hidden>

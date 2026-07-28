@@ -71,6 +71,7 @@ const seedPosts = [
 const seedPostIds = new Set(seedPosts.map(post => post.id));
 const seedPostTitles = new Set(seedPosts.map(post => post.title));
 const seedPostSummaries = new Set(seedPosts.map(post => post.summary));
+const summaryMediaTokenPattern = /\[\[media:([a-z0-9_-]+)\]\]/ig;
 
 function decodeBase64(base64) {
   if (!htmlCache.has(base64)) {
@@ -101,7 +102,17 @@ function text(message, status = 200, headers = {}) {
 
 function normalizeAttachments(attachments) {
   return Array.isArray(attachments)
-    ? attachments.filter(item => item && item.src && item.kind && item.name)
+    ? attachments
+        .filter(item => item && item.src && item.kind && item.name)
+        .map((item, index) => ({
+          id: item.id || item.token || `asset-${index}-${Math.random().toString(36).slice(2, 7)}`,
+          token: item.token || '',
+          placement: item.placement || (index === 0 ? 'cover' : 'inline'),
+          name: item.name,
+          kind: item.kind,
+          size: item.size || 0,
+          src: item.src
+        }))
     : [];
 }
 
@@ -135,6 +146,28 @@ function normalizeSupabaseUrl(value) {
     .trim()
     .replace(/\/+$/, '')
     .replace(/\/rest\/v1$/i, '');
+}
+
+function extractReferencedTokens(text) {
+  const found = [];
+  const source = String(text || '');
+  let match;
+  const regex = new RegExp(summaryMediaTokenPattern.source, 'ig');
+  while ((match = regex.exec(source))) {
+    found.push(match[1]);
+  }
+  return found;
+}
+
+function getCoverAttachment(attachments) {
+  const normalized = normalizeAttachments(attachments);
+  return normalized.find(item => item.placement === 'cover') || normalized[0] || null;
+}
+
+function getInlineAttachments(attachments) {
+  const normalized = normalizeAttachments(attachments);
+  const cover = getCoverAttachment(normalized);
+  return normalized.filter(item => !cover || item.id !== cover.id);
 }
 
 function getConfig(env) {
@@ -419,24 +452,64 @@ async function saveSite(env, request) {
 }
 
 async function extractAttachments(env, formData, existingAttachments) {
-  const files = formData.getAll('files').filter(file => file && typeof file === 'object' && file.size > 0);
-  if (files.length) {
-    const uploads = [];
-    for (const file of files) {
+  const removeAll = String(formData.get('removeAttachments') || '') === '1';
+  const coverFile = formData.get('coverFile');
+  const inlineFiles = formData.getAll('inlineFiles').filter(file => file && typeof file === 'object' && file.size > 0);
+  const inlineTokens = formData.getAll('inlineTokens').map(value => String(value || '').trim());
+  const galleryFiles = formData.getAll('files').filter(file => file && typeof file === 'object' && file.size > 0);
+  const summary = String(formData.get('summary') || '').trim();
+  const referencedTokens = new Set(extractReferencedTokens(summary));
+  const existing = removeAll ? [] : normalizeAttachments(existingAttachments);
+
+  let coverAttachment = removeAll ? null : getCoverAttachment(existing);
+  if (coverFile && typeof coverFile === 'object' && coverFile.size > 0) {
+    const src = await uploadFile(env, coverFile, 'posts');
+    coverAttachment = {
+      id: crypto.randomUUID(),
+      token: '',
+      placement: 'cover',
+      name: coverFile.name,
+      kind: (coverFile.type || '').startsWith('video/') ? 'video' : 'image',
+      size: coverFile.size,
+      src
+    };
+  }
+
+  let inlineAttachments = removeAll
+    ? []
+    : getInlineAttachments(existing).filter(item => !item.token || referencedTokens.has(item.token));
+
+  for (let index = 0; index < inlineFiles.length; index += 1) {
+    const file = inlineFiles[index];
+    const token = inlineTokens[index] || crypto.randomUUID();
+    const src = await uploadFile(env, file, 'posts');
+    inlineAttachments.push({
+      id: crypto.randomUUID(),
+      token,
+      placement: 'inline',
+      name: file.name,
+      kind: (file.type || '').startsWith('video/') ? 'video' : 'image',
+      size: file.size,
+      src
+    });
+  }
+
+  if (galleryFiles.length) {
+    for (const file of galleryFiles) {
       const src = await uploadFile(env, file, 'posts');
-      uploads.push({
+      inlineAttachments.push({
+        id: crypto.randomUUID(),
+        token: '',
+        placement: 'inline',
         name: file.name,
         kind: (file.type || '').startsWith('video/') ? 'video' : 'image',
         size: file.size,
         src
       });
     }
-    return uploads;
   }
-  if (String(formData.get('removeAttachments') || '') === '1') {
-    return [];
-  }
-  return normalizeAttachments(existingAttachments);
+
+  return (coverAttachment ? [coverAttachment] : []).concat(inlineAttachments);
 }
 
 async function createOrUpdatePost(env, request, postId) {

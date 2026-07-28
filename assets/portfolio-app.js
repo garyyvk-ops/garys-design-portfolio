@@ -4,6 +4,8 @@
 
   const maxAttachmentCount = 6;
   const maxAttachmentBytes = 25 * 1024 * 1024;
+  const contentVersionKey = 'gd-content-version';
+  const summaryMediaTokenPattern = /\[\[media:([a-z0-9_-]+)\]\]/ig;
 
   const defaultSite = {
     siteTitle: "Gary's Design",
@@ -87,8 +89,10 @@
     latestPublishedPostId: null,
     lastFocusedElement: null,
     session: { authenticated: false },
+    inlineDraftFiles: [],
     wired: false
   };
+  const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('gary-design-cms') : null;
 
   function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, function (char) {
@@ -106,7 +110,19 @@
 
   function normalizeAttachments(attachments) {
     return Array.isArray(attachments)
-      ? attachments.filter(function (item) { return item && item.src && item.kind && item.name; })
+      ? attachments
+        .filter(function (item) { return item && item.src && item.kind && item.name; })
+        .map(function (item, index) {
+          return {
+            id: item.id || item.token || ('asset-' + index + '-' + Math.random().toString(36).slice(2, 7)),
+            token: item.token || '',
+            placement: item.placement || (index === 0 ? 'cover' : 'inline'),
+            name: item.name,
+            kind: item.kind,
+            size: item.size || 0,
+            src: item.src
+          };
+        })
       : [];
   }
 
@@ -158,6 +174,73 @@
     if (words.length === 1) return escapeHtml(words[0]);
     const tail = words.pop();
     return escapeHtml(words.join(' ')) + ' <span>' + escapeHtml(tail) + '</span>';
+  }
+
+  function slugifyToken(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 28) || 'asset';
+  }
+
+  function makeInlineToken(name) {
+    return 'media-' + slugifyToken(name) + '-' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function extractReferencedTokens(text) {
+    const found = [];
+    const source = String(text || '');
+    let match;
+    const regex = new RegExp(summaryMediaTokenPattern.source, 'ig');
+    while ((match = regex.exec(source))) {
+      found.push(match[1]);
+    }
+    return found;
+  }
+
+  function getCoverAttachment(post) {
+    const attachments = normalizeAttachments(post.attachments);
+    return attachments.find(function (attachment) {
+      return attachment.placement === 'cover';
+    }) || attachments[0] || null;
+  }
+
+  function getInlineAttachments(post) {
+    const attachments = normalizeAttachments(post.attachments);
+    const cover = getCoverAttachment(post);
+    const referencedTokens = new Set(extractReferencedTokens(post.summary));
+    return attachments.filter(function (attachment) {
+      if (cover && attachment.id === cover.id) return false;
+      if (attachment.placement === 'inline') return true;
+      return attachment.token && referencedTokens.has(attachment.token);
+    });
+  }
+
+  function getInlineDraftDescriptors() {
+    const editing = currentEditingPost ? currentEditingPost() : null;
+    const existing = editing ? getInlineAttachments(editing) : [];
+    return existing.concat(state.inlineDraftFiles.map(function (item) {
+      return {
+        id: item.token,
+        token: item.token,
+        placement: 'inline',
+        name: item.file.name,
+        kind: item.file.type.startsWith('video/') ? 'video' : 'image',
+        size: item.file.size,
+        src: ''
+      };
+    }));
+  }
+
+  function insertAtCursor(field, text) {
+    const start = field.selectionStart || 0;
+    const end = field.selectionEnd || 0;
+    const value = field.value || '';
+    field.value = value.slice(0, start) + text + value.slice(end);
+    const next = start + text.length;
+    field.setSelectionRange(next, next);
+    field.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function cssHeroCover(src) {
@@ -418,10 +501,21 @@
     }).join('');
   }
 
+  function renderInlineMediaPreview() {
+    const target = document.getElementById('inlineMediaPreview');
+    if (!target) return;
+    renderAttachmentPreview(target, getInlineDraftDescriptors(), 'Paste images or videos into the summary field to embed them inline.');
+  }
+
   function getAttachmentSummary(post) {
     const attachments = normalizeAttachments(post.attachments);
     if (!attachments.length) return post.media || 'Media note open';
-    const label = attachments.length + ' ' + (attachments.length === 1 ? 'attachment' : 'attachments');
+    const cover = getCoverAttachment(post);
+    const inlineCount = getInlineAttachments(post).length;
+    const parts = [];
+    if (cover) parts.push('cover');
+    if (inlineCount) parts.push(inlineCount + ' inline ' + (inlineCount === 1 ? 'asset' : 'assets'));
+    const label = parts.join(' + ') || (attachments.length + ' attachments');
     return post.media ? label + ' + note' : label;
   }
 
@@ -447,35 +541,76 @@
     return '<img class="' + className + '" src="' + escapeAttribute(attachment.src) + '" alt="' + escapeAttribute(attachment.name) + '" />';
   }
 
+  function renderSummaryFlow(post, paragraphClass, mediaClass) {
+    const cover = getCoverAttachment(post);
+    const inlineAttachments = getInlineAttachments(post);
+    const inlineByToken = new Map(inlineAttachments.map(function (attachment) {
+      return [attachment.token, attachment];
+    }));
+    const referenced = new Set();
+    const blocks = [];
+    const source = String(post.summary || '').replace(/\r\n?/g, '\n');
+    let cursor = 0;
+    let match;
+    const regex = new RegExp(summaryMediaTokenPattern.source, 'ig');
+
+    function pushParagraphs(text) {
+      String(text || '')
+        .split(/\n\s*\n/)
+        .map(function (paragraph) { return paragraph.trim(); })
+        .filter(Boolean)
+        .forEach(function (paragraph) {
+          blocks.push('<p class="' + paragraphClass + '">' + escapeHtml(paragraph).replace(/\n/g, '<br>') + '</p>');
+        });
+    }
+
+    while ((match = regex.exec(source))) {
+      pushParagraphs(source.slice(cursor, match.index));
+      cursor = regex.lastIndex;
+      const token = match[1];
+      const attachment = inlineByToken.get(token);
+      if (attachment) {
+        referenced.add(token);
+        blocks.push('<figure class="' + mediaClass + '">' + renderMediaAsset(attachment, mediaClass + '-asset') + '<figcaption>' + escapeHtml(attachment.name) + '</figcaption></figure>');
+      }
+    }
+    pushParagraphs(source.slice(cursor));
+
+    inlineAttachments.forEach(function (attachment) {
+      if (!attachment.token || referenced.has(attachment.token)) return;
+      blocks.push('<figure class="' + mediaClass + '">' + renderMediaAsset(attachment, mediaClass + '-asset') + '<figcaption>' + escapeHtml(attachment.name) + '</figcaption></figure>');
+    });
+
+    if (!blocks.length && cover) {
+      blocks.push('<p class="' + paragraphClass + '"></p>');
+    }
+    return blocks.join('');
+  }
+
   function renderCardMedia(post) {
-    const attachments = normalizeAttachments(post.attachments);
-    if (!attachments.length) return '<span class="media-badge">' + escapeHtml(post.kind) + '</span>';
-    const first = attachments[0];
+    const first = getCoverAttachment(post);
+    if (!first) return '<span class="media-badge">' + escapeHtml(post.kind) + '</span>';
     return [
       '<span class="media-badge">' + escapeHtml(post.kind) + '</span>',
       '<div class="post-media-frame">' + renderMediaAsset(first, 'post-media-asset') + '</div>',
       '<div class="post-media-stack">',
       '<p>' + escapeHtml(first.name) + '</p>',
-      attachments.length > 1
-        ? '<span class="post-media-count">+' + (attachments.length - 1) + ' more</span>'
+      getInlineAttachments(post).length
+        ? '<span class="post-media-count">+' + getInlineAttachments(post).length + ' inline</span>'
         : '<span class="attachment-tag">' + escapeHtml(attachmentKindLabel(first.kind)) + '</span>',
       '</div>'
     ].join('');
   }
 
   function renderDialogMedia(post) {
-    const attachments = normalizeAttachments(post.attachments);
-    if (attachments.length) {
-      const linkMarkup = isHttpUrl(post.media)
-        ? '<a class="dialog-media-link" href="' + escapeAttribute(post.media) + '" target="_blank" rel="noreferrer">' + escapeHtml(post.media) + '</a>'
-        : (post.media ? '<p>' + escapeHtml(post.media) + '</p>' : '');
+    const cover = getCoverAttachment(post);
+    const linkMarkup = isHttpUrl(post.media)
+      ? '<a class="dialog-media-link" href="' + escapeAttribute(post.media) + '" target="_blank" rel="noreferrer">' + escapeHtml(post.media) + '</a>'
+      : (post.media ? '<p>' + escapeHtml(post.media) + '</p>' : '');
+    if (cover) {
       return [
         '<div class="embed-box has-media">',
-        '<div class="dialog-media-grid">',
-        attachments.map(function (attachment) {
-          return '<div class="dialog-media-card">' + renderMediaAsset(attachment, 'dialog-media-asset') + '</div>';
-        }).join(''),
-        '</div>',
+        '<div class="dialog-hero-media">' + renderMediaAsset(cover, 'dialog-hero-asset') + '</div>',
         linkMarkup,
         '</div>'
       ].join('');
@@ -535,7 +670,7 @@
         '<div class="post-content">',
         '<div class="post-meta"><span>' + escapeHtml(post.date || 'Draft post') + '</span><span>' + escapeHtml(post.audience || 'Audience to define') + '</span><span>' + escapeHtml(getAttachmentSummary(post)) + '</span></div>',
         '<h2 class="post-title">' + escapeHtml(post.title) + '</h2>',
-        renderParagraphs(post.summary, 'post-excerpt'),
+        '<div class="post-summary-flow">' + renderSummaryFlow(post, 'post-excerpt', 'inline-media-card') + '</div>',
         '<div class="author-line"><span class="mini-avatar"' + avatarStyle + ' aria-hidden="true"></span><span>' + escapeHtml(state.site.siteTitle) + ' entry</span></div>',
         '<button class="open-post" type="button" data-open-post="' + escapeAttribute(post.id) + '">Open post</button>',
         hostActions,
@@ -554,7 +689,11 @@
     elements.editingPostId.value = '';
     elements.removeAttachments.checked = false;
     elements.removeAttachmentsWrap.hidden = true;
+    state.inlineDraftFiles = [];
+    const coverPreview = document.getElementById('postCoverPreview');
+    if (coverPreview) renderAttachmentPreview(coverPreview, [], 'No featured cover selected yet.');
     renderAttachmentPreview(elements.attachmentPreview, [], 'No files selected yet.');
+    renderInlineMediaPreview();
     elements.publishButton.textContent = 'Publish post';
     elements.cancelEditButton.hidden = true;
     elements.formMessage.style.color = 'var(--muted)';
@@ -569,9 +708,14 @@
     elements.summaryInput.value = post.summary;
     elements.mediaInput.value = post.media;
     elements.filesInput.value = '';
+    const coverInput = document.getElementById('postCoverFile');
+    if (coverInput) coverInput.value = '';
     elements.removeAttachments.checked = false;
     elements.removeAttachmentsWrap.hidden = !normalizeAttachments(post.attachments).length;
-    renderAttachmentPreview(elements.attachmentPreview, normalizeAttachments(post.attachments), 'No files selected yet.');
+    renderAttachmentPreview(document.getElementById('postCoverPreview'), getCoverAttachment(post) ? [getCoverAttachment(post)] : [], 'No featured cover selected yet.');
+    renderAttachmentPreview(elements.attachmentPreview, getInlineAttachments(post), 'No files selected yet.');
+    state.inlineDraftFiles = [];
+    renderInlineMediaPreview();
     elements.publishButton.textContent = 'Save changes';
     elements.cancelEditButton.hidden = false;
     elements.formMessage.style.color = 'var(--muted)';
@@ -592,7 +736,7 @@
     elements.dialogBody.innerHTML = [
       '<div class="eyebrow">' + escapeHtml(post.kind) + ' / ' + escapeHtml(post.audience || 'Audience to define') + '</div>',
       renderDialogMedia(post),
-      '<div class="dialog-copy">' + renderParagraphs(post.summary, 'dialog-paragraph') + '</div>',
+      '<div class="dialog-copy">' + renderSummaryFlow(post, 'dialog-paragraph', 'dialog-inline-media') + '</div>',
       studioActions
     ].join('');
     elements.dialog.classList.add('is-open');
@@ -791,6 +935,7 @@
           state.posts = state.posts.filter(function (item) { return item.id !== post.id; });
           if (elements.editingPostId.value === post.id) resetComposer('The post was deleted.');
           renderPosts();
+          announceContentChange();
         } catch (error) {
           setFormMessage(toErrorMessage(error, 'The post could not be deleted.'), true);
         }
@@ -838,6 +983,7 @@
           state.posts = state.posts.filter(function (item) { return item.id !== post.id; });
           closeDialog();
           renderPosts();
+          announceContentChange();
         } catch (error) {
           setFormMessage(toErrorMessage(error, 'The post could not be deleted.'), true);
         }
@@ -848,6 +994,26 @@
       if (!elements.dialog.classList.contains('is-open')) return;
       if (event.key === 'Escape') closeDialog();
       if (event.key === 'Tab') keepFocusInDialog(event);
+    });
+
+    if (syncChannel) {
+      syncChannel.onmessage = function (event) {
+        if (!event || event.data !== 'content-changed') return;
+        refreshContent().then(function () {
+          applySite();
+          populateSiteForm();
+          renderPosts();
+        }).catch(function () {});
+      };
+    }
+
+    window.addEventListener('storage', function (event) {
+      if (event.key !== contentVersionKey) return;
+      refreshContent().then(function () {
+        applySite();
+        populateSiteForm();
+        renderPosts();
+      }).catch(function () {});
     });
 
     elements.menuToggle.addEventListener('click', function () {
@@ -874,6 +1040,37 @@
           kind: file.type.startsWith('video/') ? 'video' : 'image'
         };
       }), 'No files selected yet.');
+    });
+
+    const coverInput = document.getElementById('postCoverFile');
+    if (coverInput) {
+      coverInput.addEventListener('change', function () {
+        const selected = Array.from(coverInput.files || []);
+        renderAttachmentPreview(document.getElementById('postCoverPreview'), selected.map(function (file) {
+          return {
+            name: file.name,
+            size: file.size,
+            kind: file.type.startsWith('video/') ? 'video' : 'image'
+          };
+        }), 'No featured cover selected yet.');
+      });
+    }
+
+    elements.summaryInput.addEventListener('paste', function (event) {
+      const clipboard = event.clipboardData;
+      if (!clipboard) return;
+      const files = Array.from(clipboard.files || []).filter(function (file) {
+        return /^image\/|^video\//.test(file.type || '');
+      });
+      if (!files.length) return;
+      event.preventDefault();
+      files.forEach(function (file) {
+        const token = makeInlineToken(file.name);
+        state.inlineDraftFiles.push({ token: token, file: file });
+        insertAtCursor(elements.summaryInput, '\n\n[[media:' + token + ']]\n\n');
+      });
+      renderInlineMediaPreview();
+      setFormMessage('Pasted media will be embedded inline where the marker appears in the summary.', false);
     });
 
     elements.cancelEditButton.addEventListener('click', function () {
@@ -931,6 +1128,7 @@
         state.site = Object.assign({}, defaultSite, payload.site || {});
         applySite();
         populateSiteForm();
+        announceContentChange();
         setSiteMessage(newPasscode ? 'Page settings saved, and the studio passcode was updated.' : 'Page settings saved.', false);
       } catch (error) {
         setSiteMessage(toErrorMessage(error, 'The page settings could not be saved.'), true);
@@ -941,7 +1139,9 @@
       event.preventDefault();
       const formData = new FormData(elements.postForm);
       const selectedFiles = Array.from(elements.filesInput.files || []);
-      const totalBytes = selectedFiles.reduce(function (sum, file) { return sum + file.size; }, 0);
+      const coverFiles = Array.from((document.getElementById('postCoverFile') || {}).files || []);
+      const inlineFiles = state.inlineDraftFiles.map(function (item) { return item.file; });
+      const totalBytes = selectedFiles.concat(coverFiles).concat(inlineFiles).reduce(function (sum, file) { return sum + file.size; }, 0);
       const existingPost = currentEditingPost();
 
       if (!elements.titleInput.value.trim()) {
@@ -952,6 +1152,10 @@
       if (!elements.summaryInput.value.trim()) {
         setFormMessage('Add a summary before saving the post.', true);
         elements.summaryInput.focus();
+        return;
+      }
+      if (coverFiles.length > 1) {
+        setFormMessage('Use one featured cover file per post.', true);
         return;
       }
       if (selectedFiles.length > maxAttachmentCount) {
@@ -967,6 +1171,10 @@
       elements.publishButton.textContent = existingPost ? 'Saving...' : 'Publishing...';
 
       try {
+        state.inlineDraftFiles.forEach(function (item) {
+          formData.append('inlineFiles', item.file);
+          formData.append('inlineTokens', item.token);
+        });
         if (elements.removeAttachments.checked) {
           formData.append('removeAttachments', '1');
         }
@@ -984,6 +1192,7 @@
         focusPublishedPost(savedPost.id);
         openPost(savedPost);
         resetComposer(existingPost ? 'Changes saved and preview opened.' : 'Published to the top of the feed and preview opened.');
+        announceContentChange();
         setFormMessage(existingPost ? 'Changes saved. The updated post is open in preview.' : 'Published to the top of the feed and opened as a preview.', false);
         window.setTimeout(function () {
           state.latestPublishedPostId = null;
@@ -996,6 +1205,15 @@
         elements.publishButton.textContent = elements.editingPostId.value ? 'Save changes' : 'Publish post';
       }
     });
+  }
+
+  function announceContentChange() {
+    try {
+      localStorage.setItem(contentVersionKey, String(Date.now()));
+    } catch (_) {}
+    if (syncChannel) {
+      syncChannel.postMessage('content-changed');
+    }
   }
 
   bootstrap();
