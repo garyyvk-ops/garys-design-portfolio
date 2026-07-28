@@ -15,6 +15,7 @@ const defaultSite = {
   featuredEyebrow: 'Featured case study',
   featuredTitle: 'From course notes to learner pathway.',
   featuredCopy: 'Lead with a strong piece that combines article writing, screenshots, and a short walkthrough video. The layout keeps the editorial split while making the content clearly instructional-design focused.',
+  featuredInlineAttachments: [],
   featuredMedia: 'Featured article + gallery + video',
   featuredImageSrc: '',
   contactHeading: 'Invite the work into a conversation.',
@@ -168,6 +169,12 @@ function getInlineAttachments(attachments) {
   const normalized = normalizeAttachments(attachments);
   const cover = getCoverAttachment(normalized);
   return normalized.filter(item => !cover || item.id !== cover.id);
+}
+
+function getInlineAttachmentsForText(text, attachments) {
+  const normalized = normalizeAttachments(attachments);
+  const referencedTokens = new Set(extractReferencedTokens(text));
+  return normalized.filter(item => item.placement === 'inline' || (item.token && referencedTokens.has(item.token)));
 }
 
 function getConfig(env) {
@@ -392,6 +399,31 @@ async function resolveSiteAsset(env, formData, fieldName, previousValue) {
   return previousValue || '';
 }
 
+async function extractSiteInlineAttachments(env, formData, existingAttachments) {
+  const text = String(formData.get('featuredCopy') || '').trim();
+  const referencedTokens = new Set(extractReferencedTokens(text));
+  const inlineFiles = formData.getAll('featuredInlineFiles').filter(file => file && typeof file === 'object' && file.size > 0);
+  const inlineTokens = formData.getAll('featuredInlineTokens').map(value => String(value || '').trim());
+  let inlineAttachments = getInlineAttachmentsForText(text, existingAttachments).filter(item => !item.token || referencedTokens.has(item.token));
+
+  for (let index = 0; index < inlineFiles.length; index += 1) {
+    const file = inlineFiles[index];
+    const token = inlineTokens[index] || crypto.randomUUID();
+    const src = await uploadFile(env, file, 'site');
+    inlineAttachments.push({
+      id: crypto.randomUUID(),
+      token,
+      placement: 'inline',
+      name: file.name,
+      kind: (file.type || '').startsWith('video/') ? 'video' : 'image',
+      size: file.size,
+      src
+    });
+  }
+
+  return inlineAttachments;
+}
+
 async function saveSite(env, request) {
   const config = await requireAuth(request, env);
   if (!hasPersistence(config)) {
@@ -423,6 +455,7 @@ async function saveSite(env, request) {
   payload.heroCoverSrc = await resolveSiteAsset(env, formData, 'heroCover', existing.site.heroCoverSrc);
   payload.profileImageSrc = await resolveSiteAsset(env, formData, 'profileImage', existing.site.profileImageSrc);
   payload.featuredImageSrc = await resolveSiteAsset(env, formData, 'featuredImage', existing.site.featuredImageSrc);
+  payload.featuredInlineAttachments = await extractSiteInlineAttachments(env, formData, existing.site.featuredInlineAttachments);
 
   const newPasscode = String(formData.get('newPasscode') || '').trim();
   if (newPasscode && newPasscode.length < 4) {

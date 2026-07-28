@@ -19,6 +19,7 @@
     featuredEyebrow: 'Featured case study',
     featuredTitle: 'From course notes to learner pathway.',
     featuredCopy: 'Lead with a strong piece that combines article writing, screenshots, and a short walkthrough video. The layout keeps the editorial split while making the content clearly instructional-design focused.',
+    featuredInlineAttachments: [],
     featuredMedia: 'Featured article + gallery + video',
     featuredImageSrc: '',
     contactHeading: 'Invite the work into a conversation.',
@@ -90,6 +91,7 @@
     lastFocusedElement: null,
     session: { authenticated: false },
     inlineDraftFiles: [],
+    featuredInlineDraftFiles: [],
     wired: false
   };
   const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('gary-design-cms') : null;
@@ -137,6 +139,12 @@
       media: post.media || '',
       attachments: normalizeAttachments(post.attachments)
     };
+  }
+
+  function normalizeSite(site) {
+    return Object.assign({}, defaultSite, site || {}, {
+      featuredInlineAttachments: normalizeAttachments(site && site.featuredInlineAttachments)
+    });
   }
 
   function isSeedPost(post) {
@@ -217,10 +225,32 @@
     });
   }
 
+  function getInlineAttachmentsForText(text, attachments) {
+    const referencedTokens = new Set(extractReferencedTokens(text));
+    return normalizeAttachments(attachments).filter(function (attachment) {
+      return attachment.placement === 'inline' || (attachment.token && referencedTokens.has(attachment.token));
+    });
+  }
+
   function getInlineDraftDescriptors() {
     const editing = currentEditingPost ? currentEditingPost() : null;
     const existing = editing ? getInlineAttachments(editing) : [];
     return existing.concat(state.inlineDraftFiles.map(function (item) {
+      return {
+        id: item.token,
+        token: item.token,
+        placement: 'inline',
+        name: item.file.name,
+        kind: item.file.type.startsWith('video/') ? 'video' : 'image',
+        size: item.file.size,
+        src: ''
+      };
+    }));
+  }
+
+  function getFeaturedInlineDraftDescriptors() {
+    const existing = getInlineAttachmentsForText(state.site.featuredCopy, state.site.featuredInlineAttachments);
+    return existing.concat(state.featuredInlineDraftFiles.map(function (item) {
       return {
         id: item.token,
         token: item.token,
@@ -278,7 +308,7 @@
 
   async function apiGetContent() {
     const payload = await request('/api/content');
-    state.site = Object.assign({}, defaultSite, payload.site || {});
+    state.site = normalizeSite(payload.site);
     state.posts = stripSeedPosts(payload.posts).map(normalizePost);
   }
 
@@ -414,7 +444,7 @@
     elements.profileBio.textContent = state.site.profileBio || defaultSite.profileBio;
     elements.featuredEyebrow.textContent = state.site.featuredEyebrow || defaultSite.featuredEyebrow;
     elements.featuredTitle.textContent = state.site.featuredTitle || defaultSite.featuredTitle;
-    elements.featuredCopy.textContent = state.site.featuredCopy || defaultSite.featuredCopy;
+    elements.featuredCopy.textContent = stripMediaTokens(state.site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy;
     elements.contactHeading.textContent = state.site.contactHeading || defaultSite.contactHeading;
     elements.contactCopy.textContent = state.site.contactCopy || defaultSite.contactCopy;
     elements.contactEmailLink.textContent = state.site.contactEmail || defaultSite.contactEmail;
@@ -474,6 +504,7 @@
     paintAssetPreview('heroCoverPreview', state.site.heroCoverSrc);
     paintAssetPreview('profileImagePreview', state.site.profileImageSrc);
     paintAssetPreview('featuredImagePreview', state.site.featuredImageSrc);
+    renderFeaturedInlineMediaPreview();
   }
 
   function renderAttachmentPreview(target, attachments, emptyMessage) {
@@ -503,6 +534,12 @@
     renderAttachmentPreview(target, getInlineDraftDescriptors(), 'Paste images or videos into the summary field to embed them inline.');
   }
 
+  function renderFeaturedInlineMediaPreview() {
+    const target = document.getElementById('featuredInlineMediaPreview');
+    if (!target) return;
+    renderAttachmentPreview(target, getFeaturedInlineDraftDescriptors(), 'Paste images or videos into the featured description to embed them inside the opened story.');
+  }
+
   function getAttachmentSummary(post) {
     const attachments = normalizeAttachments(post.attachments);
     if (!attachments.length) return post.media || 'Media note open';
@@ -527,6 +564,18 @@
     return paragraphs.map(function (paragraph) {
       return '<p class="' + className + '">' + escapeHtml(paragraph).replace(/\n/g, '<br>') + '</p>';
     }).join('');
+  }
+
+  function stripMediaTokens(text) {
+    return String(text || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(new RegExp(summaryMediaTokenPattern.source, 'ig'), '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function renderTextOnlyFlow(text, paragraphClass) {
+    return renderParagraphs(stripMediaTokens(text), paragraphClass);
   }
 
   function renderMediaAsset(attachment, className) {
@@ -609,6 +658,48 @@
     if (!blocks.length && cover) {
       blocks.push('<p class="' + paragraphClass + '"></p>');
     }
+    return blocks.join('');
+  }
+
+  function renderInlineTextFlow(text, attachments, paragraphClass, mediaClass) {
+    const inlineAttachments = getInlineAttachmentsForText(text, attachments);
+    const inlineByToken = new Map(inlineAttachments.map(function (attachment) {
+      return [attachment.token, attachment];
+    }));
+    const referenced = new Set();
+    const blocks = [];
+    const source = String(text || '').replace(/\r\n?/g, '\n');
+    let cursor = 0;
+    let match;
+    const regex = new RegExp(summaryMediaTokenPattern.source, 'ig');
+
+    function pushParagraphs(chunk) {
+      String(chunk || '')
+        .split(/\n\s*\n/)
+        .map(function (paragraph) { return paragraph.trim(); })
+        .filter(Boolean)
+        .forEach(function (paragraph) {
+          blocks.push('<p class="' + paragraphClass + '">' + escapeHtml(paragraph).replace(/\n/g, '<br>') + '</p>');
+        });
+    }
+
+    while ((match = regex.exec(source))) {
+      pushParagraphs(source.slice(cursor, match.index));
+      cursor = regex.lastIndex;
+      const token = match[1];
+      const attachment = inlineByToken.get(token);
+      if (attachment) {
+        referenced.add(token);
+        blocks.push('<figure class="' + mediaClass + '">' + renderMediaAsset(attachment, mediaClass + '-asset') + '<figcaption>' + escapeHtml(attachment.name) + '</figcaption></figure>');
+      }
+    }
+    pushParagraphs(source.slice(cursor));
+
+    inlineAttachments.forEach(function (attachment) {
+      if (!attachment.token || referenced.has(attachment.token)) return;
+      blocks.push('<figure class="' + mediaClass + '">' + renderMediaAsset(attachment, mediaClass + '-asset') + '<figcaption>' + escapeHtml(attachment.name) + '</figcaption></figure>');
+    });
+
     return blocks.join('');
   }
 
@@ -695,7 +786,7 @@
         '<div class="post-content">',
         '<div class="post-meta"><span>' + escapeHtml(post.date || 'Draft post') + '</span><span>' + escapeHtml(post.audience || 'Audience to define') + '</span><span>' + escapeHtml(getAttachmentSummary(post)) + '</span></div>',
         '<h2 class="post-title">' + escapeHtml(post.title) + '</h2>',
-        '<div class="post-summary-flow">' + renderSummaryFlow(post, 'post-excerpt', 'inline-media-card') + '</div>',
+        '<div class="post-summary-flow">' + renderTextOnlyFlow(post.summary, 'post-excerpt') + '</div>',
         '<div class="author-line"><span class="mini-avatar"' + avatarStyle + ' aria-hidden="true"></span><span>' + escapeHtml(state.site.siteTitle) + ' entry</span></div>',
         '<button class="open-post" type="button" data-open-post="' + escapeAttribute(post.id) + '">Open post</button>',
         hostActions,
@@ -869,7 +960,7 @@
     try {
       await apiGetContent();
     } catch (error) {
-      state.site = Object.assign({}, defaultSite);
+      state.site = normalizeSite(defaultSite);
       state.posts = [];
       if (mode === 'studio') {
         showAuthShell();
@@ -975,11 +1066,12 @@
         audience: 'Portfolio reviewers',
         summary: state.site.featuredCopy,
         media: state.site.featuredMedia,
-        attachments: state.site.featuredImageSrc ? [{
+        attachments: (state.site.featuredImageSrc ? [{
           name: 'Featured image',
-          kind: 'image',
+          kind: inferAssetKindFromSrc(state.site.featuredImageSrc),
+          placement: 'cover',
           src: state.site.featuredImageSrc
-        }] : []
+        }] : []).concat(normalizeAttachments(state.site.featuredInlineAttachments))
       }, { readOnlyFeatured: true });
     });
 
@@ -1098,6 +1190,26 @@
       setFormMessage('Pasted media will be embedded inline where the marker appears in the summary.', false);
     });
 
+    const featuredCopyInput = document.getElementById('featuredCopyInput');
+    if (featuredCopyInput) {
+      featuredCopyInput.addEventListener('paste', function (event) {
+        const clipboard = event.clipboardData;
+        if (!clipboard) return;
+        const files = Array.from(clipboard.files || []).filter(function (file) {
+          return /^image\/|^video\//.test(file.type || '');
+        });
+        if (!files.length) return;
+        event.preventDefault();
+        files.forEach(function (file) {
+          const token = makeInlineToken(file.name);
+          state.featuredInlineDraftFiles.push({ token: token, file: file });
+          insertAtCursor(featuredCopyInput, '\n\n[[media:' + token + ']]\n\n');
+        });
+        renderFeaturedInlineMediaPreview();
+        setSiteMessage('Pasted media will appear inside the opened featured story, not on the outside card.', false);
+      });
+    }
+
     elements.cancelEditButton.addEventListener('click', function () {
       resetComposer('Edit cancelled.');
     });
@@ -1149,8 +1261,13 @@
       });
 
       try {
+        state.featuredInlineDraftFiles.forEach(function (item) {
+          data.append('featuredInlineFiles', item.file);
+          data.append('featuredInlineTokens', item.token);
+        });
         const payload = await apiSaveSite(data);
-        state.site = Object.assign({}, defaultSite, payload.site || {});
+        state.site = normalizeSite(payload.site);
+        state.featuredInlineDraftFiles = [];
         applySite();
         populateSiteForm();
         announceContentChange();
