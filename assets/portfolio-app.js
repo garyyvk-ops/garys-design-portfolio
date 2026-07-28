@@ -447,11 +447,7 @@
       elements.profilePortrait.classList.remove('has-image');
     }
 
-    if (state.site.featuredImageSrc) {
-      elements.featuredVisual.classList.add('has-image');
-    } else {
-      elements.featuredVisual.classList.remove('has-image');
-    }
+    paintFeaturedVisual(state.site.featuredImageSrc);
   }
 
   function populateSiteForm() {
@@ -539,6 +535,35 @@
       return '<video class="' + className + '" src="' + escapeAttribute(attachment.src) + '" controls preload="metadata"></video>';
     }
     return '<img class="' + className + '" src="' + escapeAttribute(attachment.src) + '" alt="' + escapeAttribute(attachment.name) + '" />';
+  }
+
+  function inferAssetKindFromSrc(src) {
+    const value = String(src || '').trim().toLowerCase();
+    if (!value) return 'image';
+    if (value.startsWith('data:video/')) return 'video';
+    if (value.startsWith('data:image/')) return 'image';
+    if (/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(value)) return 'video';
+    return 'image';
+  }
+
+  function paintFeaturedVisual(src) {
+    if (!elements.featuredVisual) return;
+    if (!src) {
+      elements.featuredVisual.innerHTML = '';
+      elements.featuredVisual.classList.remove('has-image', 'has-video');
+      return;
+    }
+
+    if (inferAssetKindFromSrc(src) === 'video') {
+      elements.featuredVisual.innerHTML = '<video class="visual-media-asset" src="' + escapeAttribute(src) + '" autoplay muted loop playsinline preload="metadata"></video>';
+      elements.featuredVisual.classList.add('has-video');
+      elements.featuredVisual.classList.remove('has-image');
+      return;
+    }
+
+    elements.featuredVisual.innerHTML = '<img class="visual-media-asset" src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(state.site.featuredTitle || state.site.featuredEyebrow || 'Featured case study') + '" />';
+    elements.featuredVisual.classList.add('has-image');
+    elements.featuredVisual.classList.remove('has-video');
   }
 
   function renderSummaryFlow(post, paragraphClass, mediaClass) {
