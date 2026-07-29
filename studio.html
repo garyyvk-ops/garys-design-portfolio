@@ -399,6 +399,20 @@
       background-position: center;
       color: transparent;
     }
+    .asset-preview.has-video {
+      padding: 0;
+      overflow: hidden;
+      background: rgba(15, 23, 42, 0.92);
+      color: transparent;
+    }
+    .asset-preview-media {
+      display: block;
+      width: 100%;
+      min-height: 86px;
+      max-height: 260px;
+      object-fit: cover;
+      background: #000;
+    }
     .asset-actions,
     .form-actions,
     .host-actions {
@@ -1172,13 +1186,13 @@
               <input id="featuredMediaInput" name="featuredMedia" />
             </div>
             <div class="field wide">
-              <label>Featured image</label>
+              <label>Featured image or video</label>
               <div class="asset-controls">
-                <input id="featuredImageUrlInput" name="featuredImageUrl" placeholder="Paste an image URL if you prefer linking instead of uploading" />
-                <input id="featuredImageFileInput" type="file" accept="image/*" />
-                <div class="asset-preview" id="featuredImagePreview">Current featured image preview</div>
+                <input id="featuredImageUrlInput" name="featuredImageUrl" placeholder="Paste an image or video URL if you prefer linking instead of uploading" />
+                <input id="featuredImageFileInput" type="file" accept="image/*,video/*" />
+                <div class="asset-preview" id="featuredImagePreview">Current featured media preview</div>
                 <div class="asset-actions">
-                  <button class="btn-ghost" type="button" data-clear-asset="featuredImage">Remove featured image</button>
+                  <button class="btn-ghost" type="button" data-clear-asset="featuredImage">Remove featured media</button>
                 </div>
               </div>
             </div>

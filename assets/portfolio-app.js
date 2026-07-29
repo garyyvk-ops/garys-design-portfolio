@@ -420,15 +420,24 @@
   function paintAssetPreview(id, src) {
     const element = document.getElementById(id);
     if (!element) return;
+    element.innerHTML = '';
     if (!src) {
-      element.classList.remove('has-image');
+      element.classList.remove('has-image', 'has-video');
       element.style.backgroundImage = '';
       if (id === 'heroCoverPreview') element.textContent = 'Current hero cover preview';
       if (id === 'profileImagePreview') element.textContent = 'Current profile image preview';
-      if (id === 'featuredImagePreview') element.textContent = 'Current featured image preview';
+      if (id === 'featuredImagePreview') element.textContent = 'Current featured media preview';
+      return;
+    }
+    if (inferAssetKindFromSrc(src) === 'video') {
+      element.classList.add('has-video');
+      element.classList.remove('has-image');
+      element.style.backgroundImage = 'none';
+      element.innerHTML = '<video class="asset-preview-media" src="' + escapeAttribute(src) + '" controls muted playsinline preload="metadata"></video>';
       return;
     }
     element.classList.add('has-image');
+    element.classList.remove('has-video');
     element.style.backgroundImage = 'linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.2)), url("' + String(src).replace(/"/g, '\\"') + '")';
     element.textContent = ' ';
   }
