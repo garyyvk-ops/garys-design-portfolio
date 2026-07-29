@@ -1,4 +1,4 @@
-import { config, handle } from './_worker.js';
+import { config, handle } from '../_worker.js';
 
 export { config };
 
