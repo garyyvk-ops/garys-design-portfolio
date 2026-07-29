@@ -76,6 +76,7 @@ const contentCache = {
   expiresAt: 0
 };
 const CONTENT_TTL_MS = 15000;
+const SNAPSHOT_OBJECT_PATH = 'cms/site-content-snapshot.json';
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -271,9 +272,103 @@ function cloneContentPayload(payload) {
   return JSON.parse(JSON.stringify(payload));
 }
 
+function encodeStoragePath(path) {
+  return String(path || '')
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
+function getPublicObjectUrl(config, path) {
+  return `${config.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(config.bucket)}/${encodeStoragePath(path)}`;
+}
+
+function sanitizePublicSite(site) {
+  const next = Object.assign({}, defaultSite, site || {});
+  delete next.hostPasscodeHash;
+  return next;
+}
+
+function buildPublicPayload(site, posts, configured) {
+  return {
+    site: sanitizePublicSite(site),
+    posts: stripSeedPosts(posts.map(row => normalizePost({
+      id: row.id,
+      title: row.title,
+      kind: row.kind,
+      audience: row.audience,
+      date: row.date_label || row.date,
+      summary: row.summary,
+      media: row.media_note || row.media,
+      attachments: row.attachments || []
+    }))),
+    configured
+  };
+}
+
 function invalidateContentCache() {
   contentCache.payload = null;
   contentCache.expiresAt = 0;
+}
+
+async function fetchStoredSite(env) {
+  const siteResponse = await supabaseFetch(env, '/rest/v1/site_content?slug=eq.main&select=*');
+  const siteRows = await siteResponse.json();
+  return siteRows.length
+    ? Object.assign({}, defaultSite, siteRows[0].payload || {})
+    : Object.assign({}, defaultSite);
+}
+
+async function fetchStoredPosts(env) {
+  const postsResponse = await supabaseFetch(env, '/rest/v1/posts?select=*&order=position.desc');
+  return postsResponse.json();
+}
+
+async function readPublicSnapshot(env) {
+  const config = getConfig(env);
+  const response = await fetch(getPublicObjectUrl(config, SNAPSHOT_OBJECT_PATH), {
+    headers: { accept: 'application/json' }
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw Object.assign(new Error('Public content snapshot could not be read.'), { status: response.status });
+  }
+  const payload = await response.json();
+  if (!payload || typeof payload !== 'object') return null;
+  return {
+    site: sanitizePublicSite(payload.site),
+    posts: stripSeedPosts(payload.posts || []).map(normalizePost),
+    configured: Boolean(payload.configured)
+  };
+}
+
+async function writePublicSnapshot(env, payload) {
+  const config = getConfig(env);
+  await supabaseFetch(env, `/storage/v1/object/${encodeURIComponent(config.bucket)}/${encodeStoragePath(SNAPSHOT_OBJECT_PATH)}`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-upsert': 'true'
+    },
+    body: JSON.stringify({
+      site: sanitizePublicSite(payload.site),
+      posts: payload.posts.map(normalizePost),
+      configured: Boolean(payload.configured),
+      updatedAt: new Date().toISOString()
+    })
+  });
+}
+
+async function refreshPublicSnapshot(env) {
+  const [site, posts] = await Promise.all([
+    fetchStoredSite(env),
+    fetchStoredPosts(env)
+  ]);
+  const payload = buildPublicPayload(site, posts, true);
+  await writePublicSnapshot(env, payload);
+  contentCache.payload = cloneContentPayload(payload);
+  contentCache.expiresAt = Date.now() + CONTENT_TTL_MS;
+  return payload;
 }
 
 async function fetchContent(env, options = {}) {
@@ -290,29 +385,22 @@ async function fetchContent(env, options = {}) {
     return cloneContentPayload(contentCache.payload);
   }
 
-  const [siteResponse, postsResponse] = await Promise.all([
-    supabaseFetch(env, '/rest/v1/site_content?slug=eq.main&select=*'),
-    supabaseFetch(env, '/rest/v1/posts?select=*&order=position.desc')
-  ]);
+  if (!options.fresh) {
+    try {
+      const snapshot = await readPublicSnapshot(env);
+      if (snapshot) {
+        contentCache.payload = cloneContentPayload(snapshot);
+        contentCache.expiresAt = Date.now() + CONTENT_TTL_MS;
+        return snapshot;
+      }
+    } catch (_) {}
+  }
 
-  const siteRows = await siteResponse.json();
-  const postRows = await postsResponse.json();
-  const payload = {
-    site: siteRows.length
-      ? Object.assign({}, defaultSite, siteRows[0].payload || {})
-      : Object.assign({}, defaultSite),
-    posts: stripSeedPosts(postRows.map(row => normalizePost({
-      id: row.id,
-      title: row.title,
-      kind: row.kind,
-      audience: row.audience,
-      date: row.date_label,
-      summary: row.summary,
-      media: row.media_note,
-      attachments: row.attachments || []
-    }))),
-    configured: true
-  };
+  const [site, posts] = await Promise.all([
+    fetchStoredSite(env),
+    fetchStoredPosts(env)
+  ]);
+  const payload = buildPublicPayload(site, posts, true);
 
   contentCache.payload = cloneContentPayload(payload);
   contentCache.expiresAt = Date.now() + CONTENT_TTL_MS;
@@ -425,9 +513,9 @@ async function saveSite(env, request) {
     throw new Error('CMS storage is not configured yet. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
   }
 
-  const existing = await fetchContent(env, { fresh: true });
+  const existingSite = await fetchStoredSite(env);
   const formData = await request.formData();
-  const payload = Object.assign({}, existing.site, {
+  const payload = Object.assign({}, existingSite, {
     siteTitle: String(formData.get('siteTitle') || '').trim() || defaultSite.siteTitle,
     profileName: String(formData.get('profileName') || '').trim() || defaultSite.profileName,
     introHeading: String(formData.get('introHeading') || '').trim() || defaultSite.introHeading,
@@ -447,10 +535,10 @@ async function saveSite(env, request) {
     resumeUrl: ''
   });
 
-  payload.heroCoverSrc = await resolveSiteAsset(formData, 'heroCover', existing.site.heroCoverSrc);
-  payload.profileImageSrc = await resolveSiteAsset(formData, 'profileImage', existing.site.profileImageSrc);
-  payload.featuredImageSrc = await resolveSiteAsset(formData, 'featuredImage', existing.site.featuredImageSrc);
-  payload.featuredInlineAttachments = await extractSiteInlineAttachments(env, formData, existing.site.featuredInlineAttachments);
+  payload.heroCoverSrc = await resolveSiteAsset(formData, 'heroCover', existingSite.heroCoverSrc);
+  payload.profileImageSrc = await resolveSiteAsset(formData, 'profileImage', existingSite.profileImageSrc);
+  payload.featuredImageSrc = await resolveSiteAsset(formData, 'featuredImage', existingSite.featuredImageSrc);
+  payload.featuredInlineAttachments = await extractSiteInlineAttachments(env, formData, existingSite.featuredInlineAttachments);
 
   const newPasscode = String(formData.get('newPasscode') || '').trim();
   if (newPasscode && newPasscode.length < 4) {
@@ -473,6 +561,7 @@ async function saveSite(env, request) {
   });
 
   invalidateContentCache();
+  await refreshPublicSnapshot(env);
   return payload;
 }
 
@@ -571,6 +660,7 @@ async function createOrUpdatePost(env, request, postId) {
   });
 
   invalidateContentCache();
+  await refreshPublicSnapshot(env);
   return normalizePost({
     id: payload.id,
     title: payload.title,
@@ -590,6 +680,7 @@ async function deletePost(env, request, postId) {
   }
   await supabaseFetch(env, `/rest/v1/posts?id=eq.${encodeURIComponent(postId)}`, { method: 'DELETE' });
   invalidateContentCache();
+  await refreshPublicSnapshot(env);
 }
 
 async function handleFetch(request, env) {
@@ -599,7 +690,9 @@ async function handleFetch(request, env) {
     if (request.method === 'GET' && url.pathname === '/api/content') {
       const payload = await fetchContent(env);
       return json(payload, 200, {
-        'cache-control': 'public, s-maxage=15, stale-while-revalidate=120'
+        'cache-control': 'public, max-age=30, stale-while-revalidate=300',
+        'cdn-cache-control': 'public, s-maxage=300, stale-while-revalidate=900',
+        'vercel-cdn-cache-control': 'public, s-maxage=300, stale-while-revalidate=900'
       });
     }
 
@@ -619,8 +712,8 @@ async function handleFetch(request, env) {
       }
       const body = await request.json();
       const passcode = String(body.passcode || '').trim();
-      const content = await fetchContent(env);
-      const storedHash = content.site.hostPasscodeHash || '';
+      const storedSite = hasPersistence(config) ? await fetchStoredSite(env) : Object.assign({}, defaultSite);
+      const storedHash = storedSite.hostPasscodeHash || '';
       const attemptedHash = passcode ? await sha256Hex(passcode) : '';
       const isBootstrapMatch = Boolean(config.hostPassword && passcode === config.hostPassword);
       const isStoredMatch = Boolean(storedHash && attemptedHash === storedHash);
