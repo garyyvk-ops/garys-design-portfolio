@@ -283,6 +283,16 @@ function getPublicObjectUrl(config, path) {
   return `${config.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(config.bucket)}/${encodeStoragePath(path)}`;
 }
 
+function parseDataUrl(value) {
+  const source = String(value || '').trim();
+  const match = source.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.+)$/i);
+  if (!match) return null;
+  return {
+    mime: match[1] || 'application/octet-stream',
+    base64: match[2]
+  };
+}
+
 function sanitizePublicSite(site) {
   const next = Object.assign({}, defaultSite, site || {});
   delete next.hostPasscodeHash;
@@ -314,9 +324,10 @@ function invalidateContentCache() {
 async function fetchStoredSite(env) {
   const siteResponse = await supabaseFetch(env, '/rest/v1/site_content?slug=eq.main&select=*');
   const siteRows = await siteResponse.json();
-  return siteRows.length
+  const site = siteRows.length
     ? Object.assign({}, defaultSite, siteRows[0].payload || {})
     : Object.assign({}, defaultSite);
+  return migrateSiteInlineAssets(env, site);
 }
 
 async function fetchStoredPosts(env) {
@@ -418,6 +429,40 @@ async function fileToDataUrl(file, body) {
   return `data:${mime};base64,${btoa(binary)}`;
 }
 
+async function uploadBytes(env, bytes, contentType, folder, filenameHint) {
+  const config = getConfig(env);
+  const hint = String(filenameHint || 'asset').trim().toLowerCase();
+  const extension = hint.includes('.') ? hint.split('.').pop() : '';
+  const safeExt = extension || (String(contentType || '').startsWith('video/') ? 'mp4' : 'jpg');
+  const path = `${folder}/${crypto.randomUUID()}.${safeExt}`;
+  const upload = () => supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
+    method: 'POST',
+    headers: {
+      'content-type': contentType || 'application/octet-stream',
+      'x-upsert': 'true'
+    },
+    body: bytes
+  });
+
+  try {
+    await upload();
+  } catch (error) {
+    const missingBucket = error.status === 404 && String(error.body || '').includes('Bucket not found');
+    if (!missingBucket) throw error;
+    await ensureBucket(env);
+    await upload();
+  }
+
+  return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${path}`;
+}
+
+async function uploadDataUrl(env, value, folder, filenameHint) {
+  const parsed = parseDataUrl(value);
+  if (!parsed) return value || '';
+  const binary = Uint8Array.from(atob(parsed.base64), char => char.charCodeAt(0));
+  return uploadBytes(env, binary, parsed.mime, folder, filenameHint);
+}
+
 async function ensureBucket(env) {
   const config = getConfig(env);
   try {
@@ -435,36 +480,24 @@ async function ensureBucket(env) {
 }
 
 async function uploadFile(env, file, folder) {
-  const config = getConfig(env);
   const extension = String(file.name || 'asset').split('.').pop().toLowerCase();
   const safeExt = extension && extension !== String(file.name || '') ? extension : ((file.type || '').startsWith('video/') ? 'mp4' : 'jpg');
-  const path = `${folder}/${crypto.randomUUID()}.${safeExt}`;
   const body = await file.arrayBuffer();
-  const upload = () => supabaseFetch(env, `/storage/v1/object/${config.bucket}/${path}`, {
-    method: 'POST',
-    headers: {
-      'content-type': file.type || 'application/octet-stream',
-      'x-upsert': 'true'
-    },
-    body
-  });
 
   try {
-    await upload();
+    return await uploadBytes(env, body, file.type || 'application/octet-stream', folder, `asset.${safeExt}`);
   } catch (error) {
     const missingBucket = error.status === 404 && String(error.body || '').includes('Bucket not found');
     if (!missingBucket) throw error;
     try {
       await ensureBucket(env);
-      await upload();
+      return await uploadBytes(env, body, file.type || 'application/octet-stream', folder, `asset.${safeExt}`);
     } catch (retryError) {
       const stillMissingBucket = retryError.status === 404 && String(retryError.body || '').includes('Bucket not found');
       if (!stillMissingBucket) throw retryError;
       return fileToDataUrl(file, body);
     }
   }
-
-  return `${config.supabaseUrl}/storage/v1/object/public/${config.bucket}/${path}`;
 }
 
 async function resolveSiteAsset(formData, fieldName, previousValue) {
@@ -473,11 +506,39 @@ async function resolveSiteAsset(formData, fieldName, previousValue) {
   const url = String(formData.get(`${fieldName}Url`) || '').trim();
   const file = formData.get(`${fieldName}File`);
   if (file && typeof file === 'object' && file.size > 0) {
-    const body = await file.arrayBuffer();
-    return fileToDataUrl(file, body);
+    return uploadFile(env, file, 'site');
   }
   if (url) return url;
   return previousValue || '';
+}
+
+async function migrateSiteInlineAssets(env, site) {
+  const next = Object.assign({}, defaultSite, site || {});
+  const fields = [
+    ['heroCoverSrc', 'hero-cover'],
+    ['profileImageSrc', 'profile-image'],
+    ['featuredImageSrc', 'featured-media']
+  ];
+  let changed = false;
+
+  for (const [fieldName, filenameHint] of fields) {
+    if (!String(next[fieldName] || '').startsWith('data:')) continue;
+    next[fieldName] = await uploadDataUrl(env, next[fieldName], 'site', filenameHint);
+    changed = true;
+  }
+
+  if (changed) {
+    await supabaseFetch(env, '/rest/v1/site_content?on_conflict=slug', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        prefer: 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify([{ slug: 'main', payload: next }])
+    });
+  }
+
+  return next;
 }
 
 async function extractSiteInlineAttachments(env, formData, existingAttachments) {
@@ -492,7 +553,6 @@ async function extractSiteInlineAttachments(env, formData, existingAttachments) 
   for (let index = 0; index < inlineFiles.length; index += 1) {
     const file = inlineFiles[index];
     const token = inlineTokens[index] || crypto.randomUUID();
-    const body = await file.arrayBuffer();
     created.push({
       id: crypto.randomUUID(),
       token,
@@ -500,7 +560,7 @@ async function extractSiteInlineAttachments(env, formData, existingAttachments) 
       name: file.name,
       kind: (file.type || '').startsWith('video/') ? 'video' : 'image',
       size: file.size,
-      src: await fileToDataUrl(file, body)
+      src: await uploadFile(env, file, 'site')
     });
   }
 
