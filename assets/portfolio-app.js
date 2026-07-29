@@ -4,6 +4,7 @@
 
   const maxAttachmentCount = 6;
   const maxAttachmentBytes = 25 * 1024 * 1024;
+  const contentCacheKey = 'gd-content-cache-v1';
   const contentVersionKey = 'gd-content-version';
   const summaryMediaTokenPattern = /\[\[media:([a-z0-9_-]+)\]\]/ig;
 
@@ -92,6 +93,7 @@
     session: { authenticated: false },
     inlineDraftFiles: [],
     featuredInlineDraftFiles: [],
+    hasCachedContent: false,
     wired: false
   };
   const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('gary-design-cms') : null;
@@ -306,10 +308,40 @@
     return body;
   }
 
+  function applyContentPayload(payload) {
+    state.site = normalizeSite(payload && payload.site);
+    state.posts = stripSeedPosts(payload && payload.posts).map(normalizePost);
+  }
+
+  function readCachedContent() {
+    try {
+      const raw = localStorage.getItem(contentCacheKey);
+      if (!raw) return false;
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== 'object') return false;
+      applyContentPayload(payload);
+      state.hasCachedContent = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function writeCachedContent() {
+    try {
+      localStorage.setItem(contentCacheKey, JSON.stringify({
+        site: state.site,
+        posts: state.posts,
+        savedAt: Date.now()
+      }));
+      state.hasCachedContent = true;
+    } catch (_) {}
+  }
+
   async function apiGetContent() {
     const payload = await request('/api/content');
-    state.site = normalizeSite(payload.site);
-    state.posts = stripSeedPosts(payload.posts).map(normalizePost);
+    applyContentPayload(payload);
+    writeCachedContent();
   }
 
   async function apiGetSession() {
@@ -957,21 +989,27 @@
     }
 
     showAppShell();
-    await refreshContent();
+    readCachedContent();
     applySite();
     populateSiteForm();
     renderPosts();
     resetComposer('Create a new post for the public portfolio feed.');
     wireSharedEvents();
+    await refreshContent();
+    applySite();
+    populateSiteForm();
+    renderPosts();
   }
 
   async function refreshContent() {
     try {
       await apiGetContent();
     } catch (error) {
-      state.site = normalizeSite(defaultSite);
-      state.posts = [];
-      if (mode === 'studio') {
+      if (!state.hasCachedContent) {
+        state.site = normalizeSite(defaultSite);
+        state.posts = [];
+      }
+      if (mode === 'studio' && !state.hasCachedContent) {
         showAuthShell();
         elements.authMessage.style.color = 'var(--danger)';
         elements.authMessage.textContent = toErrorMessage(error, 'The CMS could not be reached.');
@@ -997,6 +1035,11 @@
       try {
         await apiLogin(passcode);
         showAppShell();
+        readCachedContent();
+        applySite();
+        populateSiteForm();
+        renderPosts();
+        resetComposer('Create a new post for the public portfolio feed.');
         await refreshContent();
         applySite();
         populateSiteForm();
@@ -1058,6 +1101,7 @@
         try {
           await apiDeletePost(post.id);
           state.posts = state.posts.filter(function (item) { return item.id !== post.id; });
+          writeCachedContent();
           if (elements.editingPostId.value === post.id) resetComposer('The post was deleted.');
           renderPosts();
           announceContentChange();
@@ -1107,6 +1151,7 @@
         try {
           await apiDeletePost(post.id);
           state.posts = state.posts.filter(function (item) { return item.id !== post.id; });
+          writeCachedContent();
           closeDialog();
           renderPosts();
           announceContentChange();
@@ -1276,6 +1321,7 @@
         });
         const payload = await apiSaveSite(data);
         state.site = normalizeSite(payload.site);
+        writeCachedContent();
         state.featuredInlineDraftFiles = [];
         applySite();
         populateSiteForm();
@@ -1339,6 +1385,7 @@
           state.posts = [savedPost].concat(state.posts.filter(function (post) { return post.id !== savedPost.id; }));
         }
         state.latestPublishedPostId = savedPost.id;
+        writeCachedContent();
         renderPosts();
         focusPublishedPost(savedPost.id);
         openPost(savedPost);
