@@ -646,8 +646,23 @@
       .trim();
   }
 
-  function renderTextOnlyFlow(text, paragraphClass) {
-    return renderParagraphs(stripMediaTokens(text), paragraphClass);
+  function truncateWords(text, limit) {
+    const words = String(text || '')
+      .replace(/\r\n?/g, '\n')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) return '';
+    if (words.length <= limit) return words.join(' ');
+    return words.slice(0, limit).join(' ') + '...';
+  }
+
+  function renderTextOnlyFlow(text, paragraphClass, wordLimit) {
+    const cleaned = stripMediaTokens(text);
+    const excerpt = typeof wordLimit === 'number' && wordLimit > 0
+      ? truncateWords(cleaned, wordLimit)
+      : cleaned;
+    return renderParagraphs(excerpt, paragraphClass);
   }
 
   function renderMediaAsset(attachment, className) {
@@ -858,7 +873,7 @@
         '<div class="post-content">',
         '<div class="post-meta"><span>' + escapeHtml(post.date || 'Draft post') + '</span><span>' + escapeHtml(post.audience || 'Audience to define') + '</span><span>' + escapeHtml(getAttachmentSummary(post)) + '</span></div>',
         '<h2 class="post-title">' + escapeHtml(post.title) + '</h2>',
-        '<div class="post-summary-flow">' + renderTextOnlyFlow(post.summary, 'post-excerpt') + '</div>',
+        '<div class="post-summary-flow">' + renderTextOnlyFlow(post.summary, 'post-excerpt', 50) + '</div>',
         '<div class="author-line"><span class="mini-avatar"' + avatarStyle + ' aria-hidden="true"></span><span>' + escapeHtml(state.site.siteTitle) + ' entry</span></div>',
         '<button class="open-post" type="button" data-open-post="' + escapeAttribute(post.id) + '">Open post</button>',
         hostActions,
@@ -987,6 +1002,7 @@
   function showAuthShell() {
     populateAuthShell();
     document.body.classList.add('studio-locked');
+    document.body.classList.remove('studio-authenticated');
     elements.appShell.hidden = true;
     elements.authShell.hidden = false;
     elements.authMessage.textContent = '';
@@ -996,6 +1012,7 @@
 
   function showAppShell() {
     document.body.classList.remove('studio-locked');
+    document.body.classList.add('studio-authenticated');
     elements.authShell.hidden = true;
     elements.appShell.hidden = false;
   }

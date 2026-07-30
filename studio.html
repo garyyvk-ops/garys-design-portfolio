@@ -55,6 +55,9 @@
     body.studio-locked {
       overflow: hidden;
     }
+    body.studio-locked #appShell {
+      display: none !important;
+    }
     body.modal-open { overflow: hidden; }
     a { color: inherit; text-decoration: none; }
     button, input, textarea, select { font: inherit; }
@@ -1045,7 +1048,7 @@
     }
   </style>
 </head>
-<body>
+<body class="studio-locked">
   <a class="skip-link" href="#posts">Skip to posts</a>
 
   <div id="studioAuth" class="auth-shell studio-only" hidden>
@@ -1353,6 +1356,6 @@
     </div>
   </div>
 
-  <script src="assets/portfolio-app.js?v=20260730c"></script>
+  <script src="assets/portfolio-app.js?v=20260730d"></script>
 </body>
 </html>
