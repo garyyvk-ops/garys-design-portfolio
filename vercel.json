@@ -1,47 +1,5 @@
 {
   "cleanUrls": false,
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/api/viewer"
-    },
-    {
-      "source": "/index.html",
-      "destination": "/api/viewer"
-    },
-    {
-      "source": "/instructional-design-portfolio.html",
-      "destination": "/api/viewer"
-    },
-    {
-      "source": "/api/auth/login",
-      "destination": "/api/auth/login"
-    },
-    {
-      "source": "/api/auth/logout",
-      "destination": "/api/auth/logout"
-    },
-    {
-      "source": "/api/content",
-      "destination": "/api/content"
-    },
-    {
-      "source": "/api/session",
-      "destination": "/api/session"
-    },
-    {
-      "source": "/api/site",
-      "destination": "/api/site"
-    },
-    {
-      "source": "/api/posts",
-      "destination": "/api/posts"
-    },
-    {
-      "source": "/api/posts/(.*)",
-      "destination": "/api/posts/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*\\.html)?",

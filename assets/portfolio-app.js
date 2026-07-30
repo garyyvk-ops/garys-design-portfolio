@@ -7,6 +7,8 @@
   const contentCacheKey = 'gd-content-cache-v1';
   const contentVersionKey = 'gd-content-version';
   const summaryMediaTokenPattern = /\[\[media:([a-z0-9_-]+)\]\]/ig;
+  const publicSnapshotUrl = window.__PUBLIC_SNAPSHOT_URL__ ||
+    'https://vjexjpbmpeghbxutvorm.supabase.co/storage/v1/object/public/Personal%20Website%20assets/cms/site-content-snapshot.json';
 
   const defaultSite = {
     siteTitle: "Gary's Design",
@@ -355,6 +357,20 @@
 
   async function apiGetContent() {
     const payload = await request('/api/content');
+    applyContentPayload(payload);
+    writeCachedContent();
+  }
+
+  async function apiGetPublicSnapshot() {
+    const response = await fetch(publicSnapshotUrl, {
+      method: 'GET',
+      headers: { accept: 'application/json' },
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      throw new Error('Public snapshot could not be loaded.');
+    }
+    const payload = await response.json();
     applyContentPayload(payload);
     writeCachedContent();
   }
@@ -1018,6 +1034,12 @@
 
   async function refreshContent() {
     try {
+      if (mode === 'viewer') {
+        try {
+          await apiGetPublicSnapshot();
+          return;
+        } catch (_) {}
+      }
       await apiGetContent();
     } catch (error) {
       if (!state.hasCachedContent) {
