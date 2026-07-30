@@ -986,6 +986,7 @@
 
   function showAuthShell() {
     populateAuthShell();
+    document.body.classList.add('studio-locked');
     elements.appShell.hidden = true;
     elements.authShell.hidden = false;
     elements.authMessage.textContent = '';
@@ -994,6 +995,7 @@
   }
 
   function showAppShell() {
+    document.body.classList.remove('studio-locked');
     elements.authShell.hidden = true;
     elements.appShell.hidden = false;
   }
@@ -1017,6 +1019,7 @@
         wireSharedEvents();
         return;
       }
+      showAppShell();
     }
 
     showAppShell();

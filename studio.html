@@ -52,6 +52,9 @@
       line-height: 1.55;
       position: relative;
     }
+    body.studio-locked {
+      overflow: hidden;
+    }
     body.modal-open { overflow: hidden; }
     a { color: inherit; text-decoration: none; }
     button, input, textarea, select { font: inherit; }
@@ -1065,7 +1068,7 @@
     </form>
   </div>
 
-  <div id="appShell">
+  <div id="appShell" hidden>
     <nav class="site-nav" aria-label="Primary navigation">
       <div class="nav-inner">
         <a href="#home" class="brand" aria-label="Gary's Design home"><span class="brand-mark"></span> <span id="brandLabel">Gary's Design</span></a>
