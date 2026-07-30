@@ -516,7 +516,10 @@
     elements.profileBio.textContent = state.site.profileBio || defaultSite.profileBio;
     elements.featuredEyebrow.textContent = state.site.featuredEyebrow || defaultSite.featuredEyebrow;
     elements.featuredTitle.textContent = state.site.featuredTitle || defaultSite.featuredTitle;
-    elements.featuredCopy.textContent = stripMediaTokens(state.site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy;
+    elements.featuredCopy.textContent = truncateWords(
+      stripMediaTokens(state.site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy,
+      50
+    );
     elements.contactHeading.textContent = state.site.contactHeading || defaultSite.contactHeading;
     elements.contactCopy.textContent = state.site.contactCopy || defaultSite.contactCopy;
     elements.contactEmailLink.textContent = state.site.contactEmail || defaultSite.contactEmail;
