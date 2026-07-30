@@ -97,6 +97,9 @@
     wired: false
   };
   const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('gary-design-cms') : null;
+  const initialContent = window.__INITIAL_CONTENT__ && typeof window.__INITIAL_CONTENT__ === 'object'
+    ? window.__INITIAL_CONTENT__
+    : null;
 
   function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, function (char) {
@@ -336,6 +339,18 @@
       }));
       state.hasCachedContent = true;
     } catch (_) {}
+  }
+
+  function readInitialContent() {
+    if (!initialContent) return false;
+    try {
+      applyContentPayload(initialContent);
+      writeCachedContent();
+      state.hasCachedContent = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   async function apiGetContent() {
@@ -989,7 +1004,7 @@
     }
 
     showAppShell();
-    readCachedContent();
+    readInitialContent() || readCachedContent();
     applySite();
     populateSiteForm();
     renderPosts();

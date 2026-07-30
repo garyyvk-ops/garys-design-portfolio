@@ -1,4 +1,8 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
 const encoder = new TextEncoder();
+const APP_SHELL_VERSION = '20260730b';
 
 const defaultSite = {
   siteTitle: "Gary's Design",
@@ -77,6 +81,228 @@ const contentCache = {
 };
 const CONTENT_TTL_MS = 15000;
 const SNAPSHOT_OBJECT_PATH = 'cms/site-content-snapshot.json';
+let viewerTemplateCache = '';
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char]);
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
+function stripMediaTokens(text) {
+  return String(text || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(new RegExp(summaryMediaTokenPattern.source, 'ig'), '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function renderParagraphs(text, className) {
+  return String(text || '')
+    .split(/\n\s*\n/)
+    .map(paragraph => paragraph.trim())
+    .filter(Boolean)
+    .map(paragraph => `<p class="${className}">${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function renderTextOnlyFlow(text, paragraphClass) {
+  return renderParagraphs(stripMediaTokens(text), paragraphClass);
+}
+
+function inferAssetKindFromSrc(src) {
+  const value = String(src || '').trim().toLowerCase();
+  if (!value) return 'image';
+  if (value.startsWith('data:video/')) return 'video';
+  if (value.startsWith('data:image/')) return 'image';
+  if (/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(value)) return 'video';
+  return 'image';
+}
+
+function renderMediaAsset(attachment, className) {
+  if (!attachment) return '';
+  if (attachment.kind === 'video') {
+    return `<video class="${className}" src="${escapeAttribute(attachment.src)}" controls preload="metadata"></video>`;
+  }
+  return `<img class="${className}" src="${escapeAttribute(attachment.src)}" alt="${escapeAttribute(attachment.name)}" />`;
+}
+
+function renderCardMedia(post) {
+  const cover = getCoverAttachment(post.attachments);
+  if (cover) {
+    const media = cover.kind === 'video'
+      ? `<video class="post-media-cover" src="${escapeAttribute(cover.src)}" autoplay muted loop playsinline preload="metadata"></video>`
+      : `<img class="post-media-cover" src="${escapeAttribute(cover.src)}" alt="${escapeAttribute(cover.name)}" />`;
+    return [
+      '<div class="post-media-frame">',
+      media,
+      '</div>',
+      '<div class="post-media-stack">',
+      `<p>${escapeHtml(post.media || getAttachmentSummary(post))}</p>`,
+      '</div>'
+    ].join('');
+  }
+  return [
+    `<span class="media-badge">${escapeHtml(post.kind)}</span>`,
+    '<div class="post-media-stack">',
+    `<p>${escapeHtml(post.media || getAttachmentSummary(post))}</p>`,
+    '</div>'
+  ].join('');
+}
+
+function getAttachmentSummary(post) {
+  const cover = getCoverAttachment(post.attachments);
+  const inline = getInlineAttachments(post.attachments);
+  if (cover && inline.length) return `${attachmentKindLabel(cover.kind)} + ${inline.length} supporting asset${inline.length === 1 ? '' : 's'}`;
+  if (cover) return `${attachmentKindLabel(cover.kind)} cover`;
+  if (inline.length) return `${inline.length} supporting asset${inline.length === 1 ? '' : 's'}`;
+  return post.kind || 'Portfolio post';
+}
+
+function attachmentKindLabel(kind) {
+  return kind === 'video' ? 'Video' : 'Image';
+}
+
+function formatTitle(title) {
+  const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "Gary's <span>Design</span>";
+  if (words.length === 1) return escapeHtml(words[0]);
+  const tail = words.pop();
+  return `${escapeHtml(words.join(' '))} <span>${escapeHtml(tail)}</span>`;
+}
+
+function cssHeroCover(src) {
+  if (!src) {
+    return 'linear-gradient(135deg, rgba(20, 33, 61, 0.5), rgba(17, 24, 39, 0.18)), url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80")';
+  }
+  return `linear-gradient(135deg, rgba(20, 33, 61, 0.5), rgba(17, 24, 39, 0.18)), url("${String(src).replace(/"/g, '\\"')}")`;
+}
+
+function renderFeaturedVisual(site) {
+  if (!site.featuredImageSrc) {
+    return '<div class="visual" id="featuredVisual" aria-hidden="true"></div>';
+  }
+  if (inferAssetKindFromSrc(site.featuredImageSrc) === 'video') {
+    return `<div class="visual has-video" id="featuredVisual" aria-hidden="true"><video class="visual-media-asset" src="${escapeAttribute(site.featuredImageSrc)}" autoplay muted loop playsinline preload="metadata"></video></div>`;
+  }
+  return `<div class="visual has-image" id="featuredVisual" aria-hidden="true"><img class="visual-media-asset" src="${escapeAttribute(site.featuredImageSrc)}" alt="${escapeAttribute(site.featuredTitle || site.featuredEyebrow || 'Featured case study')}" /></div>`;
+}
+
+function renderPostsMarkup(site, posts) {
+  if (!posts.length) {
+    return [
+      '<div class="empty">',
+      '<strong>No posts yet.</strong>',
+      '<span>New portfolio posts will appear here as soon as they are published.</span>',
+      '</div>'
+    ].join('');
+  }
+
+  return posts.map((post, index) => {
+    const isDark = index % 2 ? 'is-dark' : '';
+    const avatarStyle = site.profileImageSrc
+      ? ` style="background-image:url(&quot;${escapeAttribute(site.profileImageSrc)}&quot;)"`
+      : '';
+    return [
+      `<article class="post-row ${isDark}" data-kind="${escapeAttribute(post.kind)}" data-post-id="${escapeAttribute(post.id)}">`,
+      `<div class="post-media" data-kind="${escapeAttribute(post.kind)}">`,
+      renderCardMedia(post),
+      '</div>',
+      '<div class="post-content">',
+      `<div class="post-meta"><span>${escapeHtml(post.date || 'Draft post')}</span><span>${escapeHtml(post.audience || 'Audience to define')}</span><span>${escapeHtml(getAttachmentSummary(post))}</span></div>`,
+      `<h2 class="post-title">${escapeHtml(post.title)}</h2>`,
+      `<div class="post-summary-flow">${renderTextOnlyFlow(post.summary, 'post-excerpt')}</div>`,
+      `<div class="author-line"><span class="mini-avatar"${avatarStyle} aria-hidden="true"></span><span>${escapeHtml(site.siteTitle)} entry</span></div>`,
+      `<button class="open-post" type="button" data-open-post="${escapeAttribute(post.id)}">Open post</button>`,
+      '</div>',
+      '</article>'
+    ].join('');
+  }).join('');
+}
+
+function serializeInitialContent(payload) {
+  return JSON.stringify(payload)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}
+
+async function getViewerTemplate() {
+  if (viewerTemplateCache) return viewerTemplateCache;
+  const templatePath = path.join(process.cwd(), 'index.html');
+  viewerTemplateCache = await fs.readFile(templatePath, 'utf8');
+  return viewerTemplateCache;
+}
+
+function replaceElementContent(html, id, content) {
+  const pattern = new RegExp(`(<[^>]+id="${id}"[^>]*>)([\\s\\S]*?)(</[^>]+>)`);
+  return html.replace(pattern, `$1${content}$3`);
+}
+
+function replaceElementOpen(html, id, replacement) {
+  const pattern = new RegExp(`<[^>]+id="${id}"[^>]*>[\\s\\S]*?</[^>]+>`);
+  return html.replace(pattern, replacement);
+}
+
+async function renderViewerHtml(payload) {
+  const site = sanitizePublicSite(payload.site || defaultSite);
+  const posts = Array.isArray(payload.posts) ? payload.posts.map(normalizePost) : [];
+  let html = await getViewerTemplate();
+
+  html = html.replace(/<body(?![^>]*data-mode=)([^>]*)>/, '<body$1 data-mode="viewer">');
+  html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(site.siteTitle || defaultSite.siteTitle)}</title>`);
+  html = replaceElementContent(html, 'brandLabel', escapeHtml(site.siteTitle || defaultSite.siteTitle));
+  html = replaceElementContent(html, 'heroTitle', formatTitle(site.siteTitle || defaultSite.siteTitle));
+  html = replaceElementOpen(
+    html,
+    'heroBanner',
+    `<div class="hero-banner" id="heroBanner" aria-label="Cover image behind Gary's Design title" style="background-image:${cssHeroCover(site.heroCoverSrc)}"><h1 class="hero-title" id="heroTitle">${formatTitle(site.siteTitle || defaultSite.siteTitle)}</h1></div>`
+  );
+  html = replaceElementContent(html, 'introHeading', escapeHtml(site.introHeading || defaultSite.introHeading));
+  html = replaceElementContent(html, 'introCopy', escapeHtml(site.introCopy || defaultSite.introCopy));
+  html = replaceElementContent(html, 'profileName', escapeHtml(site.profileName || defaultSite.profileName));
+  html = replaceElementContent(html, 'profileRole', escapeHtml(site.profileRole || defaultSite.profileRole));
+  html = replaceElementContent(html, 'profileBio', escapeHtml(site.profileBio || defaultSite.profileBio));
+  html = html.replace(
+    /<div class="portrait" id="profilePortrait" aria-hidden="true"><\/div>/,
+    site.profileImageSrc
+      ? `<div class="portrait has-image" id="profilePortrait" aria-hidden="true" style="background-image:url('${escapeAttribute(site.profileImageSrc)}')"></div>`
+      : '<div class="portrait" id="profilePortrait" aria-hidden="true"></div>'
+  );
+  html = replaceElementContent(html, 'featuredEyebrow', escapeHtml(site.featuredEyebrow || defaultSite.featuredEyebrow));
+  html = replaceElementContent(html, 'featuredTitle', escapeHtml(site.featuredTitle || defaultSite.featuredTitle));
+  html = replaceElementContent(html, 'featuredCopy', escapeHtml(stripMediaTokens(site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy));
+  html = replaceElementOpen(html, 'featuredVisual', renderFeaturedVisual(site));
+  html = replaceElementContent(html, 'contactHeading', escapeHtml(site.contactHeading || defaultSite.contactHeading));
+  html = replaceElementContent(html, 'contactCopy', escapeHtml(site.contactCopy || defaultSite.contactCopy));
+  html = html.replace(
+    /<a id="contactEmailLink" href="mailto:[^"]*">[\s\S]*?<\/a>/,
+    `<a id="contactEmailLink" href="mailto:${escapeAttribute(site.contactEmail || defaultSite.contactEmail)}">${escapeHtml(site.contactEmail || defaultSite.contactEmail)}</a>`
+  );
+  html = html.replace(
+    /<a id="linkedinLink" class="muted-link" href="#" target="_blank" rel="noreferrer">[\s\S]*?<\/a>/,
+    site.linkedinUrl
+      ? `<a id="linkedinLink" href="${escapeAttribute(site.linkedinUrl)}" target="_blank" rel="noreferrer">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</a>`
+      : `<a id="linkedinLink" class="muted-link" href="#" target="_blank" rel="noreferrer" aria-disabled="true">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</a>`
+  );
+  html = html.replace(
+    /<section class="posts" id="posts" aria-live="polite"><\/section>/,
+    `<section class="posts" id="posts" aria-live="polite">${renderPostsMarkup(site, posts)}</section>`
+  );
+  html = html.replace(
+    /<script src="assets\/portfolio-app\.js(?:\?v=[^"]+)?"><\/script>/,
+    `<script>window.__INITIAL_CONTENT__=${serializeInitialContent(payload)};<\/script>\n  <script src="assets/portfolio-app.js?v=${APP_SHELL_VERSION}"><\/script>`
+  );
+  return html;
+}
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -500,7 +726,7 @@ async function uploadFile(env, file, folder) {
   }
 }
 
-async function resolveSiteAsset(formData, fieldName, previousValue) {
+async function resolveSiteAsset(env, formData, fieldName, previousValue) {
   const clearKey = `clear${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`;
   if (String(formData.get(clearKey) || '') === '1') return '';
   const url = String(formData.get(`${fieldName}Url`) || '').trim();
@@ -595,9 +821,9 @@ async function saveSite(env, request) {
     resumeUrl: ''
   });
 
-  payload.heroCoverSrc = await resolveSiteAsset(formData, 'heroCover', existingSite.heroCoverSrc);
-  payload.profileImageSrc = await resolveSiteAsset(formData, 'profileImage', existingSite.profileImageSrc);
-  payload.featuredImageSrc = await resolveSiteAsset(formData, 'featuredImage', existingSite.featuredImageSrc);
+  payload.heroCoverSrc = await resolveSiteAsset(env, formData, 'heroCover', existingSite.heroCoverSrc);
+  payload.profileImageSrc = await resolveSiteAsset(env, formData, 'profileImage', existingSite.profileImageSrc);
+  payload.featuredImageSrc = await resolveSiteAsset(env, formData, 'featuredImage', existingSite.featuredImageSrc);
   payload.featuredInlineAttachments = await extractSiteInlineAttachments(env, formData, existingSite.featuredInlineAttachments);
 
   const newPasscode = String(formData.get('newPasscode') || '').trim();
@@ -818,6 +1044,19 @@ async function handleFetch(request, env) {
   }
 
   return json({ error: 'Not found.' }, 404);
+}
+
+export async function handleViewerRequest(req) {
+  const payload = await fetchContent(getEnv(), { fresh: true });
+  const html = await renderViewerHtml(payload);
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=600',
+      'x-robots-tag': 'all'
+    }
+  });
 }
 
 async function readBody(req) {
