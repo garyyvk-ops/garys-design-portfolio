@@ -1020,9 +1020,9 @@
         return;
       }
       showAppShell();
+    } else {
+      showAppShell();
     }
-
-    showAppShell();
     readInitialContent() || readCachedContent();
     applySite();
     populateSiteForm();
