@@ -118,6 +118,13 @@ function renderTextOnlyFlow(text, paragraphClass) {
   return renderParagraphs(stripMediaTokens(text), paragraphClass);
 }
 
+function truncateWords(text, limit) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  if (!limit || words.length <= limit) return words.join(' ');
+  return `${words.slice(0, limit).join(' ')}...`;
+}
+
 function inferAssetKindFromSrc(src) {
   const value = String(src || '').trim().toLowerCase();
   if (!value) return 'image';
@@ -279,7 +286,16 @@ async function renderViewerHtml(payload) {
   );
   html = replaceElementContent(html, 'featuredEyebrow', escapeHtml(site.featuredEyebrow || defaultSite.featuredEyebrow));
   html = replaceElementContent(html, 'featuredTitle', escapeHtml(site.featuredTitle || defaultSite.featuredTitle));
-  html = replaceElementContent(html, 'featuredCopy', escapeHtml(stripMediaTokens(site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy));
+  html = replaceElementContent(
+    html,
+    'featuredCopy',
+    escapeHtml(
+      truncateWords(
+        stripMediaTokens(site.featuredCopy || defaultSite.featuredCopy) || defaultSite.featuredCopy,
+        50
+      )
+    )
+  );
   html = replaceElementOpen(html, 'featuredVisual', renderFeaturedVisual(site));
   html = replaceElementContent(html, 'contactHeading', escapeHtml(site.contactHeading || defaultSite.contactHeading));
   html = replaceElementContent(html, 'contactCopy', escapeHtml(site.contactCopy || defaultSite.contactCopy));
