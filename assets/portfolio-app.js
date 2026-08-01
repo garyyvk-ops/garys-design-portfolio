@@ -1033,13 +1033,13 @@
   async function bootstrap() {
     clearLegacyPrototypeStorage();
     if (mode === 'studio') {
-      await apiGetSession();
-      if (!state.session.authenticated) {
-        showAuthShell();
-        wireSharedEvents();
-        return;
-      }
-      showAppShell();
+      state.session = { authenticated: false };
+      try {
+        await apiLogout();
+      } catch (_) {}
+      showAuthShell();
+      wireSharedEvents();
+      return;
     } else {
       showAppShell();
     }
@@ -1095,7 +1095,7 @@
       try {
         await apiLogin(passcode);
         showAppShell();
-        readCachedContent();
+        readInitialContent() || readCachedContent();
         applySite();
         populateSiteForm();
         renderPosts();
