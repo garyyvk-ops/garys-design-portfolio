@@ -542,16 +542,12 @@
     elements.contactCopy.textContent = state.site.contactCopy || defaultSite.contactCopy;
     if (elements.contactEmailText) {
       elements.contactEmailText.textContent = state.site.contactEmail || defaultSite.contactEmail;
-    } else {
-      elements.contactEmailLink.textContent = state.site.contactEmail || defaultSite.contactEmail;
     }
     elements.contactEmailLink.href = 'mailto:' + (state.site.contactEmail || defaultSite.contactEmail);
 
     if (state.site.linkedinUrl) {
       if (elements.linkedinText) {
         elements.linkedinText.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
-      } else {
-        elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
       }
       elements.linkedinLink.href = state.site.linkedinUrl;
       elements.linkedinLink.classList.remove('muted-link');
@@ -559,8 +555,6 @@
     } else {
       if (elements.linkedinText) {
         elements.linkedinText.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
-      } else {
-        elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
       }
       elements.linkedinLink.href = '#';
       elements.linkedinLink.classList.add('muted-link');
