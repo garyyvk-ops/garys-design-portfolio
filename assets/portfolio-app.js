@@ -458,7 +458,9 @@
       contactHeading: document.getElementById('contactHeading'),
       contactCopy: document.getElementById('contactCopy'),
       contactEmailLink: document.getElementById('contactEmailLink'),
+      contactEmailText: document.getElementById('contactEmailText'),
       linkedinLink: document.getElementById('linkedinLink'),
+      linkedinText: document.getElementById('linkedinText'),
       resumeLink: document.getElementById('resumeLink'),
       searchInput: document.getElementById('searchInput'),
       filtersEl: document.getElementById('filters'),
@@ -538,16 +540,28 @@
     );
     elements.contactHeading.textContent = state.site.contactHeading || defaultSite.contactHeading;
     elements.contactCopy.textContent = state.site.contactCopy || defaultSite.contactCopy;
-    elements.contactEmailLink.textContent = state.site.contactEmail || defaultSite.contactEmail;
+    if (elements.contactEmailText) {
+      elements.contactEmailText.textContent = state.site.contactEmail || defaultSite.contactEmail;
+    } else {
+      elements.contactEmailLink.textContent = state.site.contactEmail || defaultSite.contactEmail;
+    }
     elements.contactEmailLink.href = 'mailto:' + (state.site.contactEmail || defaultSite.contactEmail);
 
     if (state.site.linkedinUrl) {
-      elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      if (elements.linkedinText) {
+        elements.linkedinText.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      } else {
+        elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      }
       elements.linkedinLink.href = state.site.linkedinUrl;
       elements.linkedinLink.classList.remove('muted-link');
       elements.linkedinLink.removeAttribute('aria-disabled');
     } else {
-      elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      if (elements.linkedinText) {
+        elements.linkedinText.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      } else {
+        elements.linkedinLink.textContent = state.site.linkedinLabel || defaultSite.linkedinLabel;
+      }
       elements.linkedinLink.href = '#';
       elements.linkedinLink.classList.add('muted-link');
       elements.linkedinLink.setAttribute('aria-disabled', 'true');
