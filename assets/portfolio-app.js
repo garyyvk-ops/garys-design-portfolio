@@ -425,60 +425,76 @@
     });
   }
 
-  const elements = {
-    appShell: document.getElementById('appShell'),
-    authShell: document.getElementById('studioAuth'),
-    authForm: document.getElementById('authForm'),
-    authPasscode: document.getElementById('authPasscode'),
-    authConfirmWrap: document.getElementById('authConfirmWrap'),
-    authMessage: document.getElementById('authMessage'),
-    authTitle: document.getElementById('authTitle'),
-    authCopy: document.getElementById('authCopy'),
-    authSubmit: document.getElementById('authSubmit'),
-    menuToggle: document.querySelector('[data-menu-toggle]'),
-    mobileMenu: document.getElementById('mobileMenu'),
-    brandLabel: document.getElementById('brandLabel'),
-    heroTitle: document.getElementById('heroTitle'),
-    introHeading: document.getElementById('introHeading'),
-    introCopy: document.getElementById('introCopy'),
-    profilePortrait: document.getElementById('profilePortrait'),
-    profileName: document.getElementById('profileName'),
-    profileRole: document.getElementById('profileRole'),
-    profileBio: document.getElementById('profileBio'),
-    featuredVisual: document.getElementById('featuredVisual'),
-    featuredEyebrow: document.getElementById('featuredEyebrow'),
-    featuredTitle: document.getElementById('featuredTitle'),
-    featuredCopy: document.getElementById('featuredCopy'),
-    featuredButton: document.getElementById('featuredButton'),
-    contactHeading: document.getElementById('contactHeading'),
-    contactCopy: document.getElementById('contactCopy'),
-    contactEmailLink: document.getElementById('contactEmailLink'),
-    linkedinLink: document.getElementById('linkedinLink'),
-    resumeLink: document.getElementById('resumeLink'),
-    searchInput: document.getElementById('searchInput'),
-    filtersEl: document.getElementById('filters'),
-    resultSummary: document.getElementById('resultSummary'),
-    postsEl: document.getElementById('posts'),
-    dialog: document.getElementById('postDialog'),
-    dialogTitle: document.getElementById('dialogTitle'),
-    dialogBody: document.getElementById('dialogBody'),
-    postForm: document.getElementById('postForm'),
-    editingPostId: document.getElementById('editingPostId'),
-    titleInput: document.getElementById('postTitle'),
-    kindInput: document.getElementById('postKind'),
-    audienceInput: document.getElementById('postAudience'),
-    summaryInput: document.getElementById('postSummary'),
-    mediaInput: document.getElementById('postMedia'),
-    filesInput: document.getElementById('postFiles'),
-    attachmentPreview: document.getElementById('attachmentPreview'),
-    removeAttachments: document.getElementById('removeAttachments'),
-    removeAttachmentsWrap: document.getElementById('removeAttachmentsWrap'),
-    formMessage: document.getElementById('formMessage'),
-    publishButton: document.getElementById('publishButton'),
-    cancelEditButton: document.getElementById('cancelEditButton'),
-    siteForm: document.getElementById('siteForm'),
-    siteMessage: document.getElementById('siteMessage')
-  };
+  const elements = {};
+  let authWired = false;
+  let appWired = false;
+
+  function refreshElements() {
+    Object.assign(elements, {
+      appShell: document.getElementById('appShell'),
+      authShell: document.getElementById('studioAuth'),
+      authForm: document.getElementById('authForm'),
+      authPasscode: document.getElementById('authPasscode'),
+      authConfirmWrap: document.getElementById('authConfirmWrap'),
+      authMessage: document.getElementById('authMessage'),
+      authTitle: document.getElementById('authTitle'),
+      authCopy: document.getElementById('authCopy'),
+      authSubmit: document.getElementById('authSubmit'),
+      menuToggle: document.querySelector('[data-menu-toggle]'),
+      mobileMenu: document.getElementById('mobileMenu'),
+      brandLabel: document.getElementById('brandLabel'),
+      heroTitle: document.getElementById('heroTitle'),
+      introHeading: document.getElementById('introHeading'),
+      introCopy: document.getElementById('introCopy'),
+      profilePortrait: document.getElementById('profilePortrait'),
+      profileName: document.getElementById('profileName'),
+      profileRole: document.getElementById('profileRole'),
+      profileBio: document.getElementById('profileBio'),
+      featuredVisual: document.getElementById('featuredVisual'),
+      featuredEyebrow: document.getElementById('featuredEyebrow'),
+      featuredTitle: document.getElementById('featuredTitle'),
+      featuredCopy: document.getElementById('featuredCopy'),
+      featuredButton: document.getElementById('featuredButton'),
+      contactHeading: document.getElementById('contactHeading'),
+      contactCopy: document.getElementById('contactCopy'),
+      contactEmailLink: document.getElementById('contactEmailLink'),
+      linkedinLink: document.getElementById('linkedinLink'),
+      resumeLink: document.getElementById('resumeLink'),
+      searchInput: document.getElementById('searchInput'),
+      filtersEl: document.getElementById('filters'),
+      resultSummary: document.getElementById('resultSummary'),
+      postsEl: document.getElementById('posts'),
+      dialog: document.getElementById('postDialog'),
+      dialogTitle: document.getElementById('dialogTitle'),
+      dialogBody: document.getElementById('dialogBody'),
+      postForm: document.getElementById('postForm'),
+      editingPostId: document.getElementById('editingPostId'),
+      titleInput: document.getElementById('postTitle'),
+      kindInput: document.getElementById('postKind'),
+      audienceInput: document.getElementById('postAudience'),
+      summaryInput: document.getElementById('postSummary'),
+      mediaInput: document.getElementById('postMedia'),
+      filesInput: document.getElementById('postFiles'),
+      attachmentPreview: document.getElementById('attachmentPreview'),
+      removeAttachments: document.getElementById('removeAttachments'),
+      removeAttachmentsWrap: document.getElementById('removeAttachmentsWrap'),
+      formMessage: document.getElementById('formMessage'),
+      publishButton: document.getElementById('publishButton'),
+      cancelEditButton: document.getElementById('cancelEditButton'),
+      siteForm: document.getElementById('siteForm'),
+      siteMessage: document.getElementById('siteMessage')
+    });
+  }
+
+  function mountStudioShell() {
+    if (mode !== 'studio') return;
+    if (document.getElementById('appShell')) return;
+    const template = document.getElementById('studioAppTemplate');
+    const mount = document.getElementById('studioMount');
+    if (!template || !mount) return;
+    mount.replaceChildren(template.content.cloneNode(true));
+    refreshElements();
+  }
 
   function paintAssetPreview(id, src) {
     const element = document.getElementById(id);
@@ -1006,10 +1022,14 @@
     populateAuthShell();
     document.body.classList.add('studio-locked');
     document.body.classList.remove('studio-authenticated');
-    elements.appShell.hidden = true;
-    elements.appShell.setAttribute('inert', '');
-    elements.appShell.setAttribute('aria-hidden', 'true');
-    elements.authShell.hidden = false;
+    if (elements.appShell) {
+      elements.appShell.hidden = true;
+      elements.appShell.setAttribute('inert', '');
+      elements.appShell.setAttribute('aria-hidden', 'true');
+    }
+    if (elements.authShell) {
+      elements.authShell.hidden = false;
+    }
     elements.authMessage.textContent = '';
     elements.authPasscode.value = '';
     elements.authPasscode.focus();
@@ -1018,7 +1038,10 @@
   function showAppShell() {
     document.body.classList.remove('studio-locked');
     document.body.classList.add('studio-authenticated');
-    elements.authShell.hidden = true;
+    if (elements.authShell) {
+      elements.authShell.hidden = true;
+    }
+    if (!elements.appShell) return;
     elements.appShell.removeAttribute('inert');
     elements.appShell.setAttribute('aria-hidden', 'false');
     elements.appShell.hidden = false;
@@ -1035,6 +1058,7 @@
   }
 
   async function bootstrap() {
+    refreshElements();
     clearLegacyPrototypeStorage();
     if (mode === 'studio') {
       state.session = { authenticated: false };
@@ -1042,17 +1066,18 @@
         await apiLogout();
       } catch (_) {}
       showAuthShell();
-      wireSharedEvents();
+      wireAuthEvents();
       return;
     } else {
       showAppShell();
     }
+    wireAuthEvents();
+    wireAppEvents();
     readInitialContent() || readCachedContent();
     applySite();
     populateSiteForm();
     renderPosts();
     resetComposer('Create a new post for the public portfolio feed.');
-    wireSharedEvents();
     await refreshContent();
     applySite();
     populateSiteForm();
@@ -1081,10 +1106,10 @@
     }
   }
 
-  function wireSharedEvents() {
-    if (state.wired) return;
-    state.wired = true;
-
+  function wireAuthEvents() {
+    if (authWired) return;
+    if (!elements.authForm) return;
+    authWired = true;
     elements.authForm.addEventListener('submit', async function (event) {
       event.preventDefault();
       const passcode = elements.authPasscode.value.trim();
@@ -1098,7 +1123,10 @@
       elements.authSubmit.textContent = 'Unlocking...';
       try {
         await apiLogin(passcode);
+        mountStudioShell();
+        refreshElements();
         showAppShell();
+        wireAppEvents();
         readInitialContent() || readCachedContent();
         applySite();
         populateSiteForm();
@@ -1117,6 +1145,12 @@
         elements.authSubmit.textContent = 'Unlock studio';
       }
     });
+  }
+
+  function wireAppEvents() {
+    if (appWired) return;
+    if (!elements.postsEl || !elements.searchInput || !elements.filtersEl) return;
+    appWired = true;
 
     elements.filtersEl.addEventListener('click', function (event) {
       const button = event.target.closest('[data-filter]');
