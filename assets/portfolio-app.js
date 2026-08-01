@@ -1007,6 +1007,8 @@
     document.body.classList.add('studio-locked');
     document.body.classList.remove('studio-authenticated');
     elements.appShell.hidden = true;
+    elements.appShell.setAttribute('inert', '');
+    elements.appShell.setAttribute('aria-hidden', 'true');
     elements.authShell.hidden = false;
     elements.authMessage.textContent = '';
     elements.authPasscode.value = '';
@@ -1017,6 +1019,8 @@
     document.body.classList.remove('studio-locked');
     document.body.classList.add('studio-authenticated');
     elements.authShell.hidden = true;
+    elements.appShell.removeAttribute('inert');
+    elements.appShell.setAttribute('aria-hidden', 'false');
     elements.appShell.hidden = false;
   }
 
