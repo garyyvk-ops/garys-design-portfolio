@@ -853,15 +853,9 @@
 
   function matches(post) {
     const query = elements.searchInput.value.trim().toLowerCase();
-    const haystack = [
-      post.title,
-      post.kind,
-      post.audience,
-      post.summary,
-      post.media
-    ].concat(normalizeAttachments(post.attachments).map(function (item) { return item.name; })).join(' ').toLowerCase();
     const kindMatch = state.activeFilter === 'All' || post.kind === state.activeFilter;
-    return kindMatch && (!query || haystack.includes(query));
+    const title = String(post.title || '').toLowerCase();
+    return kindMatch && (!query || title.includes(query));
   }
 
   function renderPosts() {

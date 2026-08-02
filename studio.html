@@ -932,7 +932,7 @@
       width: min(320px, 100%);
       text-decoration: none;
     }
-    .contact-badge {
+    .contact-link::after {
       width: 20px;
       height: 20px;
       flex: 0 0 20px;
@@ -945,11 +945,16 @@
       letter-spacing: 0.02em;
       color: #fff;
     }
-    .contact-badge.gmail {
+    #contactEmailLink::after {
+      content: "M";
       background: #ea4335;
     }
-    .contact-badge.linkedin {
+    #linkedinLink::after {
+      content: "in";
       background: #0a66c2;
+    }
+    .contact-badge {
+      display: none;
     }
     .contact-links .muted-link { color: var(--muted); }
 
