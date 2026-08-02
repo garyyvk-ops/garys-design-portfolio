@@ -301,13 +301,13 @@ async function renderViewerHtml(payload) {
   html = replaceElementContent(html, 'contactCopy', escapeHtml(site.contactCopy || defaultSite.contactCopy));
     html = html.replace(
       /<a id="contactEmailLink" class="contact-link" href="mailto:[^"]*">[\s\S]*?<\/a>/,
-      `<a id="contactEmailLink" class="contact-link" href="mailto:${escapeAttribute(site.contactEmail || defaultSite.contactEmail)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5zm2.2.5 6.8 5.31L18.8 6zM19 7.53l-6.38 4.98a1 1 0 0 1-1.24 0L5 7.53V18.5c0 .28.22.5.5.5h13a.5.5 0 0 0 .5-.5z"/></svg><span id="contactEmailText">${escapeHtml(site.contactEmail || defaultSite.contactEmail)}</span></a>`
+      `<a id="contactEmailLink" class="contact-link" href="mailto:${escapeAttribute(site.contactEmail || defaultSite.contactEmail)}"><span class="contact-badge gmail" aria-hidden="true">M</span><span id="contactEmailText">${escapeHtml(site.contactEmail || defaultSite.contactEmail)}</span></a>`
     );
     html = html.replace(
       /<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer">[\s\S]*?<\/a>/,
       site.linkedinUrl
-        ? `<a id="linkedinLink" class="contact-link" href="${escapeAttribute(site.linkedinUrl)}" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.94 8.5v9H4.06v-9zM5.5 3.75a1.69 1.69 0 1 1 0 3.38 1.69 1.69 0 0 1 0-3.38M19.94 12.02v5.48h-2.87v-5.15c0-1.29-.46-2.18-1.61-2.18-.88 0-1.4.59-1.63 1.16-.08.2-.1.48-.1.76v5.41h-2.88s.04-8.78 0-9.69h2.88v1.37c.38-.58 1.08-1.42 2.63-1.42 1.92 0 3.58 1.25 3.58 3.95"/></svg><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
-        : `<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.94 8.5v9H4.06v-9zM5.5 3.75a1.69 1.69 0 1 1 0 3.38 1.69 1.69 0 0 1 0-3.38M19.94 12.02v5.48h-2.87v-5.15c0-1.29-.46-2.18-1.61-2.18-.88 0-1.4.59-1.63 1.16-.08.2-.1.48-.1.76v5.41h-2.88s.04-8.78 0-9.69h2.88v1.37c.38-.58 1.08-1.42 2.63-1.42 1.92 0 3.58 1.25 3.58 3.95"/></svg><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
+        ? `<a id="linkedinLink" class="contact-link" href="${escapeAttribute(site.linkedinUrl)}" target="_blank" rel="noreferrer"><span class="contact-badge linkedin" aria-hidden="true">in</span><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
+        : `<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer" aria-disabled="true"><span class="contact-badge linkedin" aria-hidden="true">in</span><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
     );
   html = html.replace(
     /<section class="posts" id="posts" aria-live="polite"><\/section>/,
