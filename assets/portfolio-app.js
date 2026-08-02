@@ -450,6 +450,7 @@
       profileName: document.getElementById('profileName'),
       profileRole: document.getElementById('profileRole'),
       profileBio: document.getElementById('profileBio'),
+      featuredSection: document.querySelector('.featured'),
       featuredVisual: document.getElementById('featuredVisual'),
       featuredEyebrow: document.getElementById('featuredEyebrow'),
       featuredTitle: document.getElementById('featuredTitle'),
@@ -862,6 +863,9 @@
     const visible = state.posts.filter(matches);
     const query = elements.searchInput.value.trim();
     const filterLabel = state.activeFilter === 'All' ? 'all formats' : state.activeFilter.toLowerCase();
+    if (elements.featuredSection) {
+      elements.featuredSection.hidden = Boolean(query);
+    }
     elements.resultSummary.textContent = visible.length
       ? 'Showing ' + visible.length + ' ' + (visible.length === 1 ? 'entry' : 'entries') + ' for ' + filterLabel + (query ? ' matching "' + query + '"' : '') + '.'
       : 'No entries found for ' + filterLabel + (query ? ' matching "' + query + '"' : '') + '.';
