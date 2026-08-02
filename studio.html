@@ -927,7 +927,9 @@
     .contact-link {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      gap: 16px;
+      width: min(320px, 100%);
       text-decoration: none;
     }
     .contact-badge {
@@ -1371,12 +1373,12 @@
         </div>
         <div class="contact-links">
           <a id="contactEmailLink" class="contact-link" href="mailto:hello@example.com">
-            <span class="contact-badge gmail" aria-hidden="true">M</span>
             <span id="contactEmailText">hello@example.com</span>
+            <span class="contact-badge gmail" aria-hidden="true">M</span>
           </a>
           <a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer">
-            <span class="contact-badge linkedin" aria-hidden="true">in</span>
             <span id="linkedinText">LinkedIn profile URL</span>
+            <span class="contact-badge linkedin" aria-hidden="true">in</span>
           </a>
         </div>
       </div>

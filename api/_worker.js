@@ -300,15 +300,15 @@ async function renderViewerHtml(payload) {
   html = replaceElementContent(html, 'contactHeading', escapeHtml(site.contactHeading || defaultSite.contactHeading));
   html = replaceElementContent(html, 'contactCopy', escapeHtml(site.contactCopy || defaultSite.contactCopy));
     html = html.replace(
-      /<a id="contactEmailLink" class="contact-link" href="mailto:[^"]*">[\s\S]*?<\/a>/,
-      `<a id="contactEmailLink" class="contact-link" href="mailto:${escapeAttribute(site.contactEmail || defaultSite.contactEmail)}"><span class="contact-badge gmail" aria-hidden="true">M</span><span id="contactEmailText">${escapeHtml(site.contactEmail || defaultSite.contactEmail)}</span></a>`
-    );
-    html = html.replace(
-      /<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer">[\s\S]*?<\/a>/,
-      site.linkedinUrl
-        ? `<a id="linkedinLink" class="contact-link" href="${escapeAttribute(site.linkedinUrl)}" target="_blank" rel="noreferrer"><span class="contact-badge linkedin" aria-hidden="true">in</span><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
-        : `<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer" aria-disabled="true"><span class="contact-badge linkedin" aria-hidden="true">in</span><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span></a>`
-    );
+    /<a id="contactEmailLink" class="contact-link" href="mailto:[^"]*">[\s\S]*?<\/a>/,
+    `<a id="contactEmailLink" class="contact-link" href="mailto:${escapeAttribute(site.contactEmail || defaultSite.contactEmail)}"><span id="contactEmailText">${escapeHtml(site.contactEmail || defaultSite.contactEmail)}</span><span class="contact-badge gmail" aria-hidden="true">M</span></a>`
+  );
+  html = html.replace(
+    /<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer">[\s\S]*?<\/a>/,
+    site.linkedinUrl
+      ? `<a id="linkedinLink" class="contact-link" href="${escapeAttribute(site.linkedinUrl)}" target="_blank" rel="noreferrer"><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span><span class="contact-badge linkedin" aria-hidden="true">in</span></a>`
+      : `<a id="linkedinLink" class="contact-link muted-link" href="#" target="_blank" rel="noreferrer" aria-disabled="true"><span id="linkedinText">${escapeHtml(site.linkedinLabel || defaultSite.linkedinLabel)}</span><span class="contact-badge linkedin" aria-hidden="true">in</span></a>`
+  );
   html = html.replace(
     /<section class="posts" id="posts" aria-live="polite"><\/section>/,
     `<section class="posts" id="posts" aria-live="polite">${renderPostsMarkup(site, posts)}</section>`
